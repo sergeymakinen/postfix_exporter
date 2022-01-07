@@ -1,0 +1,55 @@
+builds:
+  - main: ./cmd/postfix_exporter
+    ldflags: |
+      -s
+      -X github.com/prometheus/common/version.Version={{.Version}}
+      -X github.com/prometheus/common/version.Revision={{.FullCommit}}
+      -X github.com/prometheus/common/version.Branch={{.Branch}}
+      -X github.com/prometheus/common/version.BuildUser={{.Env.USER}}@{{.Env.HOSTNAME}}
+      -X github.com/prometheus/common/version.BuildDate={{time "20060102-15:04:05"}}
+    tags:
+      - netgo
+    targets:
+      # - aix_ppc64
+      - darwin_amd64
+      - darwin_arm64
+      - dragonfly_amd64
+      - freebsd_386
+      - freebsd_amd64
+      - freebsd_arm64
+      - freebsd_arm_6
+      - freebsd_arm_7
+      - illumos_amd64
+      - linux_386
+      - linux_amd64
+      - linux_arm64
+      - linux_arm_5
+      - linux_arm_6
+      - linux_arm_7
+      - linux_mips
+      - linux_mips64
+      - linux_mips64le
+      - linux_mipsle
+      - linux_ppc64
+      - linux_ppc64le
+      - linux_s390x
+      - netbsd_386
+      - netbsd_amd64
+      - netbsd_arm64
+      - netbsd_arm_6
+      - netbsd_arm_7
+      - openbsd_386
+      - openbsd_amd64
+      - openbsd_arm64
+      - openbsd_arm_7
+      - windows_386
+      - windows_amd64
+      - windows_arm64
+
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip
+
+release:
+  prerelease: auto

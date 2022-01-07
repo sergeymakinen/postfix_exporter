@@ -1,0 +1,37 @@
+# Unsupported
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: foo
+# Postscreen
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: CONNECT from [123.45.67.89]:12345 to [123.45.67.89]:25
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: DISCONNECT [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: DNSBL rank 123 for [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: PREGREET 123 after 0.12 from [123.45.67.89]:12345: EHLO User\r\n
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: PASS OLD [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: PASS NEW [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: HANGUP after 123 from [123.45.67.89]:12345 in tests after SMTP handshake
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: NOQUEUE: reject: RCPT from [123.45.67.89]:12345: 123 1.2.3 Reasons; client [123.45.67.89] blocked using example.com; from=<user@example.com>, to=<user@example.com>, proto=ESMTP, helo=<example.com>
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: DATA without valid RCPT from [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: BDAT without valid RCPT from [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: COMMAND TIME LIMIT from [123.45.67.89]:12345 after HELO
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: COMMAND LENGTH LIMIT from [123.45.67.89]:12345 after HELO
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: BARE NEWLINE from [123.45.67.89]:12345 after \000\000\000
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: NON-SMTP COMMAND from [123.45.67.89]:12345 after CONNECT: GET / HTTP/1.1
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: COMMAND PIPELINING from [123.45.67.89]:12345 after : \r\n
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: COMMAND COUNT LIMIT from [123.45.67.89]:12345 after UNIMPLEMENTED
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: NOQUEUE: reject: CONNECT from [123.45.67.89]:12345: too many connections
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: DENYLISTED [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: BLACKLISTED [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: ALLOWLISTED [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: WHITELISTED [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: WHITELIST VETO [123.45.67.89]:12345
+# smtpd
+Jan 1 00:00:00 hostname postfix/smtpd[12345]: warning: hostname example.com does not resolve to address 123.45.67.89
+Jan 1 00:00:00 hostname postfix/smtpd[12345]: connect from example.com[123.45.67.89]
+Jan 1 00:00:00 hostname postfix/smtpd[12345]: disconnect from example.com[123.45.67.89] ehlo=123 mail=123 rcpt=123 data=123 quit=123 commands=123
+Jan 1 00:00:00 hostname postfix/smtpd[12345]: lost connection after CONNECT from example.com[123.45.67.89]
+Jan 1 00:00:00 hostname postfix/smtpd[12345]: 123456789AB: milter-reject: DATA from example.com[123.45.67.89]: 123 1.2.3 Reasons; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
+# lmtp
+Jan 1 00:00:00 hostname postfix/lmtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[path], delay=0.12, delays=0.12/0.12/0.12/0.12, dsn=1.2.3, status=sent (xxx)
+# smtp
+Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[123.45.67.89]:123, delay=0.12, delays=0.12/0.12/0.12/0.12, dsn=1.2.3, status=sent (xxx)
+# cleanup
+Jan 1 00:00:00 hostname postfix/cleanup[12345]: 123456789AB: milter-reject: END-OF-MESSAGE from example.com[123.45.67.89]: 123 1.2.3 Reasons; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
