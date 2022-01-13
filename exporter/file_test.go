@@ -25,6 +25,7 @@ var testMetrics = []string{
 	"postfix_smtp_statuses_total",
 	"postfix_smtp_delay_seconds",
 	"postfix_milter_actions_total",
+	"postfix_login_failures_total",
 }
 
 func TestExporter_Collect_File(t *testing.T) {

@@ -31,6 +31,7 @@ make
 | postfix_smtp_statuses_total | Total number of times a SMTP server message status change events were collected. | status
 | postfix_smtp_delay_seconds | Delay in seconds for a SMTP server to process a message. | status
 | postfix_milter_actions_total | Total number of times milter events were collected. | subprogram, action
+| postfix_login_failures_total | Total number of times login failure events were collected. | subprogram, method
 
 ## Flags
 

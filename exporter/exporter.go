@@ -58,6 +58,7 @@ var (
 	reQueueStatus          = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z]+) \(.+?\)$`)
 	reLostConnection       = regexp.MustCompile(`^lost connection after (.+?) from ` + hostnameWithIpAddrPart)
 	reMilter               = regexp.MustCompile(`^.+?: milter-([a-z-]+): .+? from ` + hostnameWithIpAddrPart)
+	reLoginFailed          = regexp.MustCompile(`^` + hostnameWithIpAddrPart + `: SASL (.+?) authentication failed:`)
 )
 
 // Exporter collects Postfix stats from logs and exports them
@@ -81,6 +82,7 @@ type Exporter struct {
 	smtpStatuses        *prometheus.CounterVec
 	smtpDelays          *prometheus.SummaryVec
 	milter              *prometheus.CounterVec
+	loginFailed         *prometheus.CounterVec
 }
 
 // Close stops collecting new logs.
@@ -104,6 +106,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.smtpStatuses.Describe(ch)
 	e.smtpDelays.Describe(ch)
 	e.milter.Describe(ch)
+	e.loginFailed.Describe(ch)
 }
 
 // Collect delivers collected Postfix statistics as Prometheus metrics.
@@ -122,6 +125,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.smtpStatuses.Collect(ch)
 	e.smtpDelays.Collect(ch)
 	e.milter.Collect(ch)
+	e.loginFailed.Collect(ch)
 }
 
 func (e *Exporter) scrape(r record, err error) {
@@ -187,6 +191,8 @@ func (e *Exporter) scrape(r record, err error) {
 			e.hostnameNotResolved.WithLabelValues(r.Subprogram).Inc()
 		} else if matches := reMilter.FindStringSubmatch(r.Text); matches != nil {
 			e.milter.WithLabelValues(r.Subprogram, matches[1]).Inc()
+		} else if matches := reLoginFailed.FindStringSubmatch(r.Text); matches != nil {
+			e.loginFailed.WithLabelValues(r.Subprogram, matches[2]).Inc()
 		} else {
 			found = false
 		}
@@ -296,6 +302,11 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 			Name:      "milter_actions_total",
 			Help:      "Total number of times milter events were collected.",
 		}, []string{"subprogram", "action"}),
+		loginFailed: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "login_failures_total",
+			Help:      "Total number of times login failure events were collected.",
+		}, []string{"subprogram", "method"}),
 	}
 	var err error
 	switch collectorType {

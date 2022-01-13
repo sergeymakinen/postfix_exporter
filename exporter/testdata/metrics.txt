@@ -14,6 +14,9 @@ postfix_lmtp_delay_seconds_count{status="sent"} 1
 # HELP postfix_lmtp_statuses_total Total number of times a LMTP server message status change events were collected.
 # TYPE postfix_lmtp_statuses_total counter
 postfix_lmtp_statuses_total{status="sent"} 1
+# HELP postfix_login_failures_total Total number of times login failure events were collected.
+# TYPE postfix_login_failures_total counter
+postfix_login_failures_total{method="LOGIN",subprogram="smtpd"} 1
 # HELP postfix_lost_connections_total Total number of times lost connection events were collected.
 # TYPE postfix_lost_connections_total counter
 postfix_lost_connections_total{subprogram="smtpd"} 1
