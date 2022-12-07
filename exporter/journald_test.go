@@ -43,15 +43,15 @@ func TestExporter_Collect_Journald(t *testing.T) {
 			if r.Subprogram != "" {
 				id += "/" + r.Subprogram
 			}
-			err = journal.Send(r.Text, journal.PriInfo, map[string]string{
+			var severity string
+			if r.Severity != severityInfo {
+				severity = string(r.Severity) + ": "
+			}
+			err = journal.Send(severity+r.Text, journal.PriInfo, map[string]string{
 				"SYSLOG_IDENTIFIER": id,
 				"SYSLOG_TIMESTAMP":  r.Time.Format(timeFormat) + " ",
 			})
 			if err != nil {
-				t.Fatal(err)
-			}
-		} else {
-			if err = journal.Send(s, journal.PriInfo, nil); err != nil {
 				t.Fatal(err)
 			}
 		}
