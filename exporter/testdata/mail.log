@@ -23,6 +23,7 @@ Jan 1 00:00:00 hostname postfix/postscreen[12345]: BLACKLISTED [123.45.67.89]:12
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: ALLOWLISTED [123.45.67.89]:12345
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: WHITELISTED [123.45.67.89]:12345
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: WHITELIST VETO [123.45.67.89]:12345
+Jan 1 00:00:00 hostname postfix/postscreen[12345]: error: open /example: No such file or directory
 # smtpd
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: warning: hostname example.com does not resolve to address 123.45.67.89
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: connect from example.com[123.45.67.89]
@@ -36,3 +37,5 @@ Jan 1 00:00:00 hostname postfix/lmtp[12345]: 123456789AB: to=<user@example.com>,
 Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[123.45.67.89]:123, delay=0.12, delays=0.12/0.12/0.12/0.12, dsn=1.2.3, status=sent (xxx)
 # cleanup
 Jan 1 00:00:00 hostname postfix/cleanup[12345]: 123456789AB: milter-reject: END-OF-MESSAGE from example.com[123.45.67.89]: 123 1.2.3 Reasons; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
+# qmgr
+Jan 1 00:00:00 hostname postfix/qmgr[12345]: 123456789AB: from=<user@example.com>>, status=expired, returned to sender

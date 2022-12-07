@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -51,14 +51,15 @@ var (
 	rePsVeto           = regexp.MustCompile(`^(ALLOWLIST|WHITELIST) VETO ` + psIPAddrPart)
 
 	hostnamePart           = `[a-zA-Z0-9-._]+`
-	hostnameWithIpAddrPart = hostnamePart + `\[` + ipAddrPart + `]`
+	hostnameWithIPAddrPart = hostnamePart + `\[` + ipAddrPart + `]`
 	reHostnameNotResolve   = regexp.MustCompile(`^hostname ` + hostnamePart + ` does not resolve to address ` + ipAddrPart)
-	reConnect              = regexp.MustCompile(`^connect from ` + hostnameWithIpAddrPart)
-	reDisconnect           = regexp.MustCompile(`^disconnect from ` + hostnameWithIpAddrPart)
-	reQueueStatus          = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z]+) \(.+?\)$`)
-	reLostConnection       = regexp.MustCompile(`^lost connection after (.+?) from ` + hostnameWithIpAddrPart)
-	reMilter               = regexp.MustCompile(`^.+?: milter-([a-z-]+): .+? from ` + hostnameWithIpAddrPart)
-	reLoginFailed          = regexp.MustCompile(`^` + hostnameWithIpAddrPart + `: SASL (.+?) authentication failed:`)
+	reConnect              = regexp.MustCompile(`^connect from ` + hostnameWithIPAddrPart)
+	reDisconnect           = regexp.MustCompile(`^disconnect from ` + hostnameWithIPAddrPart)
+	reQueueStatus          = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z-]+) \(.+?\)$`)
+	reLostConnection       = regexp.MustCompile(`^lost connection after (.+?) from ` + hostnameWithIPAddrPart)
+	reMilter               = regexp.MustCompile(`^.+?: milter-([a-z-]+): .+? from ` + hostnameWithIPAddrPart)
+	reLoginFailed          = regexp.MustCompile(`^` + hostnameWithIPAddrPart + `: SASL (.+?) authentication failed:`)
+	reQmgrStatus           = regexp.MustCompile(`status=([a-z-]+), .+?$`)
 )
 
 // Exporter collects Postfix stats from logs and exports them
@@ -83,6 +84,8 @@ type Exporter struct {
 	smtpDelays          *prometheus.SummaryVec
 	milter              *prometheus.CounterVec
 	loginFailed         *prometheus.CounterVec
+	qmgrStatuses        *prometheus.CounterVec
+	logs                *prometheus.CounterVec
 }
 
 // Close stops collecting new logs.
@@ -107,6 +110,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.smtpDelays.Describe(ch)
 	e.milter.Describe(ch)
 	e.loginFailed.Describe(ch)
+	e.qmgrStatuses.Describe(ch)
+	e.logs.Describe(ch)
 }
 
 // Collect delivers collected Postfix statistics as Prometheus metrics.
@@ -126,6 +131,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.smtpDelays.Collect(ch)
 	e.milter.Collect(ch)
 	e.loginFailed.Collect(ch)
+	e.qmgrStatuses.Collect(ch)
+	e.logs.Collect(ch)
 }
 
 func (e *Exporter) scrape(r record, err error) {
@@ -139,6 +146,7 @@ func (e *Exporter) scrape(r record, err error) {
 		level.Debug(e.logger).Log("msg", "Foreign log record", "record", r)
 		return
 	}
+	e.logs.WithLabelValues(r.Subprogram, string(r.Severity)).Inc()
 	found := true
 	if r.Subprogram == "postscreen" {
 		if matches := rePsConnect.FindStringSubmatch(r.Text); matches != nil {
@@ -218,6 +226,12 @@ func (e *Exporter) scrape(r record, err error) {
 		} else {
 			found = false
 		}
+	} else if r.Subprogram == "qmgr" {
+		if matches := reQmgrStatus.FindStringSubmatch(r.Text); matches != nil {
+			e.qmgrStatuses.WithLabelValues(matches[1]).Inc()
+		} else {
+			found = false
+		}
 	} else {
 		found = false
 	}
@@ -278,7 +292,7 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 		lmtpStatuses: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
 			Name:      "lmtp_statuses_total",
-			Help:      "Total number of times a LMTP server message status change events were collected.",
+			Help:      "Total number of times LMTP server message status change events were collected.",
 		}, []string{"status"}),
 		lmtpDelays: prometheus.NewSummaryVec(prometheus.SummaryOpts{
 			Namespace:  namespace,
@@ -289,7 +303,7 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 		smtpStatuses: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
 			Name:      "smtp_statuses_total",
-			Help:      "Total number of times a SMTP server message status change events were collected.",
+			Help:      "Total number of times SMTP server message status change events were collected.",
 		}, []string{"status"}),
 		smtpDelays: prometheus.NewSummaryVec(prometheus.SummaryOpts{
 			Namespace:  namespace,
@@ -307,6 +321,16 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 			Name:      "login_failures_total",
 			Help:      "Total number of times login failure events were collected.",
 		}, []string{"subprogram", "method"}),
+		qmgrStatuses: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "qmgr_statuses_total",
+			Help:      "Total number of times Postfix queue manager message status change events were collected.",
+		}, []string{"status"}),
+		logs: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "logs_total",
+			Help:      "Total number of log records processed.",
+		}, []string{"subprogram", "severity"}),
 	}
 	var err error
 	switch collectorType {

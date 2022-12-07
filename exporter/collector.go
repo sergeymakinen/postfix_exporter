@@ -55,7 +55,11 @@ func parseRecord(line string) (record, error) {
 	if err != nil {
 		return record{}, err
 	}
-	r := record{line: line}
+	r := record{
+		line: line,
+
+		Severity: severityInfo,
+	}
 	r.Time, err = time.Parse(timeFormat, ss)
 	if err != nil {
 		return record{}, err
@@ -85,7 +89,6 @@ func parseRecord(line string) (record, error) {
 		case severityWarning, severityError, severityFatal, severityPanic:
 			r.Severity = severity
 		default:
-			r.Severity = severityInfo
 			// Unread ss which is not a severity.
 			s = ss + ": " + s
 		}
