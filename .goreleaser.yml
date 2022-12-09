@@ -9,6 +9,8 @@ builds:
       -X github.com/prometheus/common/version.BuildDate={{time "20060102-15:04:05"}}
     tags:
       - netgo
+    env:
+      - CGO_ENABLED=1
     targets:
       # - aix_ppc64
       - darwin_amd64
