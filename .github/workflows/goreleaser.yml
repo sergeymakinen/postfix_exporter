@@ -21,7 +21,7 @@ jobs:
         with:
           go-version: 1.19
       - name: Install cgo dependencies
-        run: apt-get install -y libsystemd-dev
+        run: apt-get install -y build-essential libsystemd-dev
       - name: Set build info
         run: |
           echo "USER=$(whoami)" >> $GITHUB_ENV
