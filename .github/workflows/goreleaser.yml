@@ -6,7 +6,7 @@ name: goreleaser
 jobs:
   GoReleaser:
     runs-on: ubuntu-latest
-    container: debian:buster
+    container: debian:bullseye
     steps:
       - name: Install git
         run: |
