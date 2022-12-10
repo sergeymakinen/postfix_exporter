@@ -53,6 +53,7 @@ builds:
           - CC=i686-linux-gnu-gcc
       - goos: linux
         goarch: amd64
+        goamd64: v1
         env:
           - CGO_ENABLED=1
       - goos: linux
