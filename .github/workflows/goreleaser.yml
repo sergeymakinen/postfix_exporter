@@ -6,7 +6,7 @@ name: goreleaser
 jobs:
   GoReleaser:
     runs-on: ubuntu-latest
-    container: debian:bullseye
+    container: debian:buster
     steps:
       - name: Install git
         run: |
@@ -21,7 +21,19 @@ jobs:
         with:
           go-version: 1.19
       - name: Install cgo dependencies
-        run: apt-get install -y build-essential libsystemd-dev
+        run: |
+          apt-get install -y \
+            build-essential \
+            gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabi \
+            gcc-i686-linux-gnu \
+            gcc-mips-linux-gnu \
+            gcc-mips64-linux-gnuabi64 \
+            gcc-mips64el-linux-gnuabi64 \
+            gcc-mipsel-linux-gnu \
+            gcc-powerpc64le-linux-gnu \
+            gcc-s390x-linux-gnu \
+            libsystemd-dev
       - name: Set build info
         run: |
           echo "USER=$(whoami)" >> $GITHUB_ENV

@@ -9,8 +9,6 @@ builds:
       -X github.com/prometheus/common/version.BuildDate={{time "20060102-15:04:05"}}
     tags:
       - netgo
-    env:
-      - CGO_ENABLED=1
     targets:
       # - aix_ppc64
       - darwin_amd64
@@ -47,6 +45,73 @@ builds:
       - windows_386
       - windows_amd64
       - windows_arm64
+    overrides:
+      - goos: linux
+        goarch: '386'
+        env:
+          - CGO_ENABLED=1
+          - CC=i686-linux-gnu-gcc
+      - goos: linux
+        goarch: amd64
+        env:
+          - CGO_ENABLED=1
+      - goos: linux
+        goarch: arm64
+        env:
+          - CGO_ENABLED=1
+          - CC=aarch64-linux-gnu-gcc
+      - goos: linux
+        goarch: arm
+        goarm: '5'
+        env:
+          - CGO_ENABLED=1
+          - CC=arm-linux-gnueabi-gcc
+      - goos: linux
+        goarch: arm
+        goarm: '6'
+        env:
+          - CGO_ENABLED=1
+          - CC=arm-linux-gnueabi-gcc
+      - goos: linux
+        goarch: arm
+        goarm: '7'
+        env:
+          - CGO_ENABLED=1
+          - CC=arm-linux-gnueabi-gcc
+      - goos: linux
+        goarch: mips
+        gomips: hardfloat
+        env:
+          - CGO_ENABLED=1
+          - CC=mips-linux-gnu-gcc
+      - goos: linux
+        goarch: mips64
+        gomips: hardfloat
+        env:
+          - CGO_ENABLED=1
+          - CC=mips64-linux-gnuabi64-gcc
+      - goos: linux
+        goarch: mips64le
+        gomips: hardfloat
+        env:
+          - CGO_ENABLED=1
+          - CC=mips64el-linux-gnuabi64-gcc
+      - goos: linux
+        goarch: mipsle
+        gomips: hardfloat
+        env:
+          - CGO_ENABLED=1
+          - CC=mipsel-linux-gnu-gcc
+      - goos: linux
+        goarch: ppc64le
+        env:
+          - CGO_ENABLED=1
+          - CC=powerpc64le-linux-gnu-gcc
+      - goos: linux
+        goarch: s390x
+        env:
+          - CGO_ENABLED=1
+          - CC=s390x-linux-gnu-gcc
 
 archives:
   - format_overrides:
