@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -13,19 +14,17 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 	"github.com/sergeymakinen/postfix_exporter/exporter"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {
 	var (
-		collector     = kingpin.Flag("collector", "Collector type to scrape metrics with. One of: [file, journald]").Default("file").Enum("file", "journald")
-		instance      = kingpin.Flag("postfix.instance", "Postfix instance name.").Default("postfix").String()
-		logPath       = kingpin.Flag("file.log", "Path to a file containing Postfix logs.").Default("/var/log/mail.log").String()
-		journaldPath  = kingpin.Flag("journald.path", "Path where a systemd journal residing in.").Default("").String()
-		journaldUnit  = kingpin.Flag("journald.unit", "Postfix systemd service name.").Default("postfix@-.service").String()
-		webConfig     = webflag.AddFlags(kingpin.CommandLine)
-		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9907").String()
-		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		collector    = kingpin.Flag("collector", "Collector type to scrape metrics with. One of: [file, journald]").Default("file").Enum("file", "journald")
+		instance     = kingpin.Flag("postfix.instance", "Postfix instance name.").Default("postfix").String()
+		logPath      = kingpin.Flag("file.log", "Path to a file containing Postfix logs.").Default("/var/log/mail.log").String()
+		journaldPath = kingpin.Flag("journald.path", "Path where a systemd journal residing in.").Default("").String()
+		journaldUnit = kingpin.Flag("journald.unit", "Postfix systemd service name.").Default("postfix@-.service").String()
+		toolkitFlags = webflag.AddFlags(kingpin.CommandLine, ":9907")
+		metricsPath  = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
@@ -61,9 +60,8 @@ func main() {
              </html>`))
 	})
 
-	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
-	srv := &http.Server{Addr: *listenAddress}
-	if err := web.ListenAndServe(srv, *webConfig, logger); err != nil {
+	srv := &http.Server{}
+	if err := web.ListenAndServe(srv, toolkitFlags, logger); err != nil {
 		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
 		os.Exit(1)
 	}

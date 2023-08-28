@@ -32,6 +32,7 @@ builds:
       - linux_mipsle
       - linux_ppc64
       - linux_ppc64le
+      - linux_riscv64
       - linux_s390x
       - netbsd_386
       - netbsd_amd64
@@ -56,6 +57,7 @@ builds:
         goamd64: v1
         env:
           - CGO_ENABLED=1
+          - CC=x86_64-linux-gnu-gcc
       - goos: linux
         goarch: arm64
         env:
@@ -108,6 +110,11 @@ builds:
         env:
           - CGO_ENABLED=1
           - CC=powerpc64le-linux-gnu-gcc
+      - goos: linux
+        goarch: riscv64
+        env:
+          - CGO_ENABLED=1
+          - CC=riscv64-linux-gnu-gcc
       - goos: linux
         goarch: s390x
         env:

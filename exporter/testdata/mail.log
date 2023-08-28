@@ -31,6 +31,7 @@ Jan 1 00:00:00 hostname postfix/smtpd[12345]: disconnect from example.com[123.45
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: lost connection after CONNECT from example.com[123.45.67.89]
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: 123456789AB: milter-reject: DATA from example.com[123.45.67.89]: 123 1.2.3 Reasons; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: warning: example.com[123.45.67.89]: SASL LOGIN authentication failed: xxx
+Jan 1 00:00:00 hostname postfix/smtpd[12345]: NOQUEUE: reject: RCPT from example.com[123.45.67.89]: 123 1.2.3 <user@example.com>: Reasons; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
 # lmtp
 Jan 1 00:00:00 hostname postfix/lmtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[path], delay=0.12, delays=0.12/0.12/0.12/0.12, dsn=1.2.3, status=sent (xxx)
 # smtp

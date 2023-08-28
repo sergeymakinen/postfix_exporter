@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -57,7 +56,7 @@ func TestExporter_Collect_Journald(t *testing.T) {
 		}
 	}
 	time.Sleep(5 * time.Second)
-	b, err := ioutil.ReadFile("testdata/metrics.txt")
+	b, err := os.ReadFile("testdata/metrics.txt")
 	if err != nil {
 		t.Fatal(err)
 	}

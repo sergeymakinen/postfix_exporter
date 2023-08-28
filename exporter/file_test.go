@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -28,10 +27,11 @@ var testMetrics = []string{
 	"postfix_login_failures_total",
 	"postfix_qmgr_statuses_total",
 	"postfix_logs_total",
+	"postfix_noqueue_rejects_total",
 }
 
 func TestExporter_Collect_File(t *testing.T) {
-	out, err := ioutil.TempFile("", "")
+	out, err := os.CreateTemp("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestExporter_Collect_File(t *testing.T) {
 		}
 	}
 	time.Sleep(5 * time.Second)
-	b, err := ioutil.ReadFile("testdata/metrics.txt")
+	b, err := os.ReadFile("testdata/metrics.txt")
 	if err != nil {
 		t.Fatal(err)
 	}

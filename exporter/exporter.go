@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -28,7 +27,7 @@ const namespace = "postfix"
 var ErrUnsupportedCollector = errors.New("unsupported collector")
 
 var (
-	ipAddrPart = `([a-f0-9:.]+)`
+	ipAddrPart = `[a-f0-9:.]+`
 
 	psIPAddrPart       = `\[` + ipAddrPart + `]`
 	rePsConnect        = regexp.MustCompile(`^CONNECT from ` + psIPAddrPart)
@@ -55,11 +54,13 @@ var (
 	reHostnameNotResolve   = regexp.MustCompile(`^hostname ` + hostnamePart + ` does not resolve to address ` + ipAddrPart)
 	reConnect              = regexp.MustCompile(`^connect from ` + hostnameWithIPAddrPart)
 	reDisconnect           = regexp.MustCompile(`^disconnect from ` + hostnameWithIPAddrPart)
-	reQueueStatus          = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z-]+) \(.+?\)$`)
 	reLostConnection       = regexp.MustCompile(`^lost connection after (.+?) from ` + hostnameWithIPAddrPart)
 	reMilter               = regexp.MustCompile(`^.+?: milter-([a-z-]+): .+? from ` + hostnameWithIPAddrPart)
 	reLoginFailed          = regexp.MustCompile(`^` + hostnameWithIPAddrPart + `: SASL (.+?) authentication failed:`)
-	reQmgrStatus           = regexp.MustCompile(`status=([a-z-]+), .+?$`)
+	reNoqueueReject        = regexp.MustCompile(`^NOQUEUE: reject: (\w+) from ` + hostnameWithIPAddrPart + `: \d+ [\d.]+ <[^>]+>: ([^;]+); `)
+
+	reQueueStatus = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z-]+) \(.+?\)$`)
+	reQmgrStatus  = regexp.MustCompile(`status=([a-z-]+), .+?$`)
 )
 
 // Exporter collects Postfix stats from logs and exports them
@@ -68,7 +69,6 @@ type Exporter struct {
 	collector io.Closer
 	instance  string
 	logger    log.Logger
-	mu        sync.Mutex
 
 	errors              prometheus.Counter
 	foreign             prometheus.Counter
@@ -86,6 +86,7 @@ type Exporter struct {
 	loginFailed         *prometheus.CounterVec
 	qmgrStatuses        *prometheus.CounterVec
 	logs                *prometheus.CounterVec
+	noqueueRejects      *prometheus.CounterVec
 }
 
 // Close stops collecting new logs.
@@ -112,6 +113,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.loginFailed.Describe(ch)
 	e.qmgrStatuses.Describe(ch)
 	e.logs.Describe(ch)
+	e.noqueueRejects.Describe(ch)
 }
 
 // Collect delivers collected Postfix statistics as Prometheus metrics.
@@ -133,6 +135,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.loginFailed.Collect(ch)
 	e.qmgrStatuses.Collect(ch)
 	e.logs.Collect(ch)
+	e.noqueueRejects.Collect(ch)
 }
 
 func (e *Exporter) scrape(r record, err error) {
@@ -189,7 +192,13 @@ func (e *Exporter) scrape(r record, err error) {
 			found = false
 		}
 	} else if r.Subprogram == "smtpd" || strings.HasSuffix(r.Subprogram, "/smtpd") {
-		if matches := reConnect.FindStringSubmatch(r.Text); matches != nil {
+		if strings.HasPrefix(r.Text, "NOQUEUE: reject:") {
+			if matches := reNoqueueReject.FindStringSubmatch(r.Text); matches != nil {
+				e.noqueueRejects.WithLabelValues(r.Subprogram, matches[1], matches[2]).Inc()
+			} else {
+				e.noqueueRejects.WithLabelValues(r.Subprogram, "FIXME", "unsupported").Inc()
+			}
+		} else if matches := reConnect.FindStringSubmatch(r.Text); matches != nil {
 			e.connects.WithLabelValues(r.Subprogram).Inc()
 		} else if matches := reDisconnect.FindStringSubmatch(r.Text); matches != nil {
 			e.disconnects.WithLabelValues(r.Subprogram).Inc()
@@ -200,7 +209,7 @@ func (e *Exporter) scrape(r record, err error) {
 		} else if matches := reMilter.FindStringSubmatch(r.Text); matches != nil {
 			e.milter.WithLabelValues(r.Subprogram, matches[1]).Inc()
 		} else if matches := reLoginFailed.FindStringSubmatch(r.Text); matches != nil {
-			e.loginFailed.WithLabelValues(r.Subprogram, matches[2]).Inc()
+			e.loginFailed.WithLabelValues(r.Subprogram, matches[1]).Inc()
 		} else {
 			found = false
 		}
@@ -331,6 +340,11 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 			Name:      "logs_total",
 			Help:      "Total number of log records processed.",
 		}, []string{"subprogram", "severity"}),
+		noqueueRejects: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "noqueue_rejects_total",
+			Help:      "Total number of times NOQUEUE: reject events were collected.",
+		}, []string{"subprogram", "command", "message"}),
 	}
 	var err error
 	switch collectorType {
