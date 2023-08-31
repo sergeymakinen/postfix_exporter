@@ -25,7 +25,7 @@ postfix_logs_total{severity="info",subprogram="lmtp"} 1
 postfix_logs_total{severity="info",subprogram="postscreen"} 23
 postfix_logs_total{severity="info",subprogram="qmgr"} 1
 postfix_logs_total{severity="info",subprogram="smtp"} 1
-postfix_logs_total{severity="info",subprogram="smtpd"} 5
+postfix_logs_total{severity="info",subprogram="smtpd"} 6
 postfix_logs_total{severity="warning",subprogram="smtpd"} 2
 # HELP postfix_lost_connections_total Total number of times lost connection events were collected.
 # TYPE postfix_lost_connections_total counter
@@ -36,6 +36,7 @@ postfix_milter_actions_total{action="reject",subprogram="cleanup"} 1
 postfix_milter_actions_total{action="reject",subprogram="smtpd"} 1
 # HELP postfix_noqueue_rejects_total Total number of times NOQUEUE: reject events were collected.
 # TYPE postfix_noqueue_rejects_total counter
+postfix_noqueue_rejects_total{command="FIXME",message="unsupported",subprogram="smtpd"} 1
 postfix_noqueue_rejects_total{command="RCPT",message="Reasons",subprogram="smtpd"} 1
 # HELP postfix_not_resolved_hostnames_total Total number of times not resolved hostname events were collected.
 # TYPE postfix_not_resolved_hostnames_total counter

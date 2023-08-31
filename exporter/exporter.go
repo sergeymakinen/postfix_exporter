@@ -197,6 +197,7 @@ func (e *Exporter) scrape(r record, err error) {
 				e.noqueueRejects.WithLabelValues(r.Subprogram, matches[1], matches[2]).Inc()
 			} else {
 				e.noqueueRejects.WithLabelValues(r.Subprogram, "FIXME", "unsupported").Inc()
+				level.Warn(e.logger).Log("msg", "Unsupported NOQUEUE: reject log record", "record", r)
 			}
 		} else if matches := reConnect.FindStringSubmatch(r.Text); matches != nil {
 			e.connects.WithLabelValues(r.Subprogram).Inc()

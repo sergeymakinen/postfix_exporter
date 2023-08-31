@@ -34,6 +34,7 @@ make
 | postfix_login_failures_total | Total number of times login failure events were collected. | subprogram, method
 | postfix_qmgr_statuses_total | Total number of times Postfix queue manager message status change events were collected. | status
 | postfix_logs_total | Total number of log records processed. | subprogram, severity
+| postfix_noqueue_rejects_total | Total number of times NOQUEUE: reject events were collected. | subprogram, command, message
 
 ## Flags
 
