@@ -57,7 +57,8 @@ var (
 	reLostConnection       = regexp.MustCompile(`^lost connection after (.+?) from ` + hostnameWithIPAddrPart)
 	reMilter               = regexp.MustCompile(`^.+?: milter-([a-z-]+): .+? from ` + hostnameWithIPAddrPart)
 	reLoginFailed          = regexp.MustCompile(`^` + hostnameWithIPAddrPart + `: SASL (.+?) authentication failed:`)
-	reNoqueueReject        = regexp.MustCompile(`^NOQUEUE: reject: (\w+) from ` + hostnameWithIPAddrPart + `: \d+ [\d.]+ <[^>]+>: ([^;]+); `)
+	reNoqueueReject        = regexp.MustCompile(`^NOQUEUE: reject: (\w+) from ` + hostnameWithIPAddrPart + `: \d+ [\d.]+ (<[^>]+>: )?([^;]+); `)
+	reNoqueueRejectReason  = regexp.MustCompile(`^(Client host rejected: cannot find your hostname|Recipient address rejected: Rejected by SPF)`)
 
 	reQueueStatus = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z-]+) \(.+?\)$`)
 	reQmgrStatus  = regexp.MustCompile(`status=([a-z-]+), .+?$`)
@@ -194,7 +195,11 @@ func (e *Exporter) scrape(r record, err error) {
 	} else if r.Subprogram == "smtpd" || strings.HasSuffix(r.Subprogram, "/smtpd") {
 		if strings.HasPrefix(r.Text, "NOQUEUE: reject:") {
 			if matches := reNoqueueReject.FindStringSubmatch(r.Text); matches != nil {
-				e.noqueueRejects.WithLabelValues(r.Subprogram, matches[1], matches[2]).Inc()
+				reason := matches[3]
+				if reasonMatches := reNoqueueRejectReason.FindStringSubmatch(reason); reasonMatches != nil {
+					reason = reasonMatches[1]
+				}
+				e.noqueueRejects.WithLabelValues(r.Subprogram, matches[1], reason).Inc()
 			} else {
 				e.noqueueRejects.WithLabelValues(r.Subprogram, "FIXME", "unsupported").Inc()
 				level.Warn(e.logger).Log("msg", "Unsupported NOQUEUE: reject log record", "record", r)
