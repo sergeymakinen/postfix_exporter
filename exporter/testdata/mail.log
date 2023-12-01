@@ -25,9 +25,9 @@ Jan 1 00:00:00 hostname postfix/postscreen[12345]: WHITELISTED [123.45.67.89]:12
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: WHITELIST VETO [123.45.67.89]:12345
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: error: open /example: No such file or directory
 # smtpd
-Jan 1 00:00:00 hostname postfix/smtpd[12345]: warning: hostname example.com does not resolve to address 123.45.67.89
-Jan 1 00:00:00 hostname postfix/smtpd[12345]: connect from example.com[123.45.67.89]
-Jan 1 00:00:00 hostname postfix/smtpd[12345]: disconnect from example.com[123.45.67.89] ehlo=123 mail=123 rcpt=123 data=123 quit=123 commands=123
+2023-02-01T01:02:04.123456+00:00 hostname postfix/smtpd[12345]: warning: hostname example.com does not resolve to address 123.45.67.89
+Jan  1 00:00:00 hostname postfix/smtpd[12345]: connect from example.com[123.45.67.89]
+Jan 01 00:00:00 hostname postfix/smtpd[12345]: disconnect from example.com[123.45.67.89] ehlo=123 mail=123 rcpt=123 data=123 quit=123 commands=123
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: lost connection after CONNECT from example.com[123.45.67.89]
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: 123456789AB: milter-reject: DATA from example.com[123.45.67.89]: 123 1.2.3 Reasons; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: warning: example.com[123.45.67.89]: SASL LOGIN authentication failed: xxx
