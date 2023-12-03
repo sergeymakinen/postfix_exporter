@@ -20,12 +20,13 @@ postfix_login_failures_total{method="LOGIN",subprogram="smtpd"} 1
 # HELP postfix_logs_total Total number of log records processed.
 # TYPE postfix_logs_total counter
 postfix_logs_total{severity="error",subprogram="postscreen"} 1
-postfix_logs_total{severity="info",subprogram="cleanup"} 1
-postfix_logs_total{severity="info",subprogram="lmtp"} 1
-postfix_logs_total{severity="info",subprogram="postscreen"} 23
-postfix_logs_total{severity="info",subprogram="qmgr"} 1
-postfix_logs_total{severity="info",subprogram="smtp"} 1
-postfix_logs_total{severity="info",subprogram="smtpd"} 8
+postfix_logs_total{severity="info",subprogram="cleanup"} 2
+postfix_logs_total{severity="info",subprogram="lmtp"} 2
+postfix_logs_total{severity="info",subprogram="postscreen"} 22
+postfix_logs_total{severity="info",subprogram="qmgr"} 2
+postfix_logs_total{severity="info",subprogram="smtp"} 8
+postfix_logs_total{severity="info",subprogram="smtpd"} 9
+postfix_logs_total{severity="info",subprogram="unknown"} 1
 postfix_logs_total{severity="warning",subprogram="smtpd"} 2
 # HELP postfix_lost_connections_total Total number of times lost connection events were collected.
 # TYPE postfix_lost_connections_total counter
@@ -34,12 +35,11 @@ postfix_lost_connections_total{subprogram="smtpd"} 1
 # TYPE postfix_milter_actions_total counter
 postfix_milter_actions_total{action="reject",subprogram="cleanup"} 1
 postfix_milter_actions_total{action="reject",subprogram="smtpd"} 1
-# HELP postfix_noqueue_rejects_total Total number of times NOQUEUE: reject events were collected.
-# TYPE postfix_noqueue_rejects_total counter
-postfix_noqueue_rejects_total{command="FIXME",message="unsupported",subprogram="smtpd"} 1
-postfix_noqueue_rejects_total{command="RCPT",message="Client host rejected: cannot find your hostname",subprogram="smtpd"} 1
-postfix_noqueue_rejects_total{command="RCPT",message="Reasons",subprogram="smtpd"} 1
-postfix_noqueue_rejects_total{command="RCPT",message="Recipient address rejected: Rejected by SPF",subprogram="smtpd"} 1
+# HELP postfix_noqueue_reject_replies_total Total number of times NOQUEUE: reject event replies were collected.
+# TYPE postfix_noqueue_reject_replies_total counter
+postfix_noqueue_reject_replies_total{code="123",command="RCPT",enhanced_code="1.2.3",subprogram="smtpd",text="Client host rejected: cannot find your hostname"} 1
+postfix_noqueue_reject_replies_total{code="123",command="RCPT",enhanced_code="1.2.3",subprogram="smtpd",text="Reasons"} 1
+postfix_noqueue_reject_replies_total{code="123",command="RCPT",enhanced_code="1.2.3",subprogram="smtpd",text="Recipient address rejected: Rejected by SPF"} 1
 # HELP postfix_not_resolved_hostnames_total Total number of times not resolved hostname events were collected.
 # TYPE postfix_not_resolved_hostnames_total counter
 postfix_not_resolved_hostnames_total{subprogram="smtpd"} 1
@@ -72,14 +72,33 @@ postfix_postscreen_actions_total{action="WHITELISTED"} 1
 postfix_qmgr_statuses_total{status="expired"} 1
 # HELP postfix_smtp_delay_seconds Delay in seconds for a SMTP server to process a message.
 # TYPE postfix_smtp_delay_seconds summary
+postfix_smtp_delay_seconds{status="bounced",quantile="0.5"} 1.23
+postfix_smtp_delay_seconds{status="bounced",quantile="0.9"} 1.23
+postfix_smtp_delay_seconds{status="bounced",quantile="0.99"} 1.23
+postfix_smtp_delay_seconds_sum{status="bounced"} 1.23
+postfix_smtp_delay_seconds_count{status="bounced"} 1
+postfix_smtp_delay_seconds{status="deferred",quantile="0.5"} 2
+postfix_smtp_delay_seconds{status="deferred",quantile="0.9"} 2
+postfix_smtp_delay_seconds{status="deferred",quantile="0.99"} 2
+postfix_smtp_delay_seconds_sum{status="deferred"} 4
+postfix_smtp_delay_seconds_count{status="deferred"} 2
 postfix_smtp_delay_seconds{status="sent",quantile="0.5"} 0.12
 postfix_smtp_delay_seconds{status="sent",quantile="0.9"} 0.12
 postfix_smtp_delay_seconds{status="sent",quantile="0.99"} 0.12
 postfix_smtp_delay_seconds_sum{status="sent"} 0.12
 postfix_smtp_delay_seconds_count{status="sent"} 1
+# HELP postfix_smtp_replies_total Total number of times SMTP server replies were collected.
+# TYPE postfix_smtp_replies_total counter
+postfix_smtp_replies_total{code="123",enhanced_code="1.2.3",text="graylist"} 1
+# HELP postfix_smtp_status_replies_total Total number of times SMTP server message status change event replies were collected.
+# TYPE postfix_smtp_status_replies_total counter
+postfix_smtp_status_replies_total{code="123",enhanced_code="1.2.3",status="bounced",text="DKIM unauthenticated mail is prohibited, please check your DKIM signature. If you believe that this failure is in error, please refer to https://tools.ietf.org/html/rfc6376 or contact user@example.com for more information via alternate means."} 1
+postfix_smtp_status_replies_total{code="123",enhanced_code="1.2.3",status="deferred",text="storage"} 1
 # HELP postfix_smtp_statuses_total Total number of times SMTP server message status change events were collected.
 # TYPE postfix_smtp_statuses_total counter
+postfix_smtp_statuses_total{status="bounced"} 1
+postfix_smtp_statuses_total{status="deferred"} 2
 postfix_smtp_statuses_total{status="sent"} 1
 # HELP postfix_unsupported_total Total number of unsupported log records.
 # TYPE postfix_unsupported_total counter
-postfix_unsupported_total 2
+postfix_unsupported_total 8

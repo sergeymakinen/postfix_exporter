@@ -1,5 +1,13 @@
-# Unsupported
-Jan 1 00:00:00 hostname postfix/postscreen[12345]: foo
+# Unsupported or malformed
+Jan 1 00:00:00 hostname postfix1[12345]: foo
+Jan 1 00:00:00 hostname postfix/unknown[12345]: foo
+Jan: 1 00:00:00 hostname postfix/postscreen[12345]: foo
+Jan 1 00:00:00 hostname postfix/postscreen[abcde]: foo
+Jan 1 00:00:00 hostname postfix/postscreen[12345
+Jan 1 00:00:00 hostname postfix/postscreen
+Foo 1 00:00:00 hostname
+Jan 1 00:00:00
+Jan
 # Postscreen
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: CONNECT from [123.45.67.89]:12345 to [123.45.67.89]:25
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: DISCONNECT [123.45.67.89]:12345
@@ -25,9 +33,9 @@ Jan 1 00:00:00 hostname postfix/postscreen[12345]: WHITELISTED [123.45.67.89]:12
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: WHITELIST VETO [123.45.67.89]:12345
 Jan 1 00:00:00 hostname postfix/postscreen[12345]: error: open /example: No such file or directory
 # smtpd
-Jan 1 00:00:00 hostname postfix/smtpd[12345]: warning: hostname example.com does not resolve to address 123.45.67.89
-Jan 1 00:00:00 hostname postfix/smtpd[12345]: connect from example.com[123.45.67.89]
-Jan 1 00:00:00 hostname postfix/smtpd[12345]: disconnect from example.com[123.45.67.89] ehlo=123 mail=123 rcpt=123 data=123 quit=123 commands=123
+2023-02-01T01:02:04.123456+00:00 hostname postfix/smtpd[12345]: warning: hostname example.com does not resolve to address 123.45.67.89
+Jan  1 00:00:00 hostname postfix/smtpd[12345]: connect from example.com[123.45.67.89]
+Jan 01 00:00:00 hostname postfix/smtpd[12345]: disconnect from example.com[123.45.67.89] ehlo=123 mail=123 rcpt=123 data=123 quit=123 commands=123
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: lost connection after CONNECT from example.com[123.45.67.89]
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: 123456789AB: milter-reject: DATA from example.com[123.45.67.89]: 123 1.2.3 Reasons; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: warning: example.com[123.45.67.89]: SASL LOGIN authentication failed: xxx
@@ -35,11 +43,22 @@ Jan 1 00:00:00 hostname postfix/smtpd[12345]: NOQUEUE: reject: RCPT from example
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: NOQUEUE: reject: RCPT from example.com[123.45.67.89]: 123 1.2.3 Client host rejected: cannot find your hostname, [123.45.67.89]; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: NOQUEUE: reject: RCPT from example.com[123.45.67.89]: 123 1.2.3 <user@example.com>: Recipient address rejected: Rejected by SPF: 123.45.67.89 is not a designated mailserver for user%40example.com (context mfrom, on example.com); from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
 Jan 1 00:00:00 hostname postfix/smtpd[12345]: NOQUEUE: reject: Unsupported
+Jan 1 00:00:00 hostname postfix/smtpd[12345]: Unsupported
 # lmtp
 Jan 1 00:00:00 hostname postfix/lmtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[path], delay=0.12, delays=0.12/0.12/0.12/0.12, dsn=1.2.3, status=sent (xxx)
+Jan 1 00:00:00 hostname postfix/lmtp[12345]: Unsupported
 # smtp
 Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[123.45.67.89]:123, delay=0.12, delays=0.12/0.12/0.12/0.12, dsn=1.2.3, status=sent (xxx)
+2023-02-01T01:02:04.123456+00:00 hostname postfix/smtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[123.45.67.89]:25, delay=1.23, delays=1.23/1.23/1.23/1.23, dsn=1.2.3, status=bounced (host example.com[123.45.67.89] said: 123 #1.2.3 DKIM unauthenticated mail is prohibited, please check your DKIM signature. If you believe that this failure is in error, please refer to https://tools.ietf.org/html/rfc6376 or contact user@example.com for more information via alternate means. (in reply to end of DATA command))
+Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: user@example.com, relay=example.com[123.45.67.89]:25, delay=2, delays=2/2/2/2, dsn=1.2.3, status=deferred (host example.com[123.45.67.89] said: 123-1.2.3 The recipient's inbox is out of storage space. Please direct the 123-1.2.3 recipient to 123 1.2.3  https://support.google.com/mail/?p=OverQuotaTemp 000-0000000000000000000000000000000000000000000.000 - gsmtp (in reply to RCPT TO command))
+Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: user@example.com, relay=example.com[123.45.67.89]:25, delay=2, delays=2/2/2/2, dsn=1.2.3, status=deferred (host example.com[123.45.67.89] said: 12 Malformed (in reply to RCPT TO command))
+Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: host example.com[123.45.67.89] said: 123 1.2.3 Greylisting in action, please come back later (in reply to RCPT TO command)
+Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: host example.com[123.45.67.89] said: 123 1.2.3 Ignored (in reply to RCPT TO command)
+Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: host example.com[123.45.67.89] said: 12 Malformed (in reply to RCPT TO command)
+Jan 1 00:00:00 hostname postfix/smtp[12345]: Unsupported
 # cleanup
 Jan 1 00:00:00 hostname postfix/cleanup[12345]: 123456789AB: milter-reject: END-OF-MESSAGE from example.com[123.45.67.89]: 123 1.2.3 Reasons; from=<user@example.com> to=<user@example.com> proto=ESMTP helo=<example.com>
+Jan 1 00:00:00 hostname postfix/cleanup[12345]: Unsupported
 # qmgr
 Jan 1 00:00:00 hostname postfix/qmgr[12345]: 123456789AB: from=<user@example.com>>, status=expired, returned to sender
+Jan 1 00:00:00 hostname postfix/qmgr[12345]: Unsupported

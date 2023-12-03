@@ -17,7 +17,7 @@ const (
 	severityPanic   severity = "panic"
 )
 
-const timeFormat = "Jan  2 15:04:05"
+const bsdFormat = "Jan  2 15:04:05"
 
 type record struct {
 	Time       time.Time
@@ -51,7 +51,7 @@ func parseRecord(line string) (record, error) {
 		}
 		return ss[:i-len(substr)], nil
 	}
-	ss, err := readUntil(" ", 3)
+	ss, err := readUntil(" ", 1)
 	if err != nil {
 		return record{}, err
 	}
@@ -60,9 +60,23 @@ func parseRecord(line string) (record, error) {
 
 		Severity: severityInfo,
 	}
-	r.Time, err = time.Parse(timeFormat, ss)
-	if err != nil {
-		return record{}, err
+	if strings.Contains(ss, ":") {
+		// RFC3339 timestamp.
+		r.Time, err = time.Parse(time.RFC3339Nano, ss)
+		if err != nil {
+			return record{}, err
+		}
+	} else {
+		// Classic BSD timestamp.
+		ss2, err := readUntil(" ", 2)
+		if err != nil {
+			return record{}, err
+		}
+		ss += " " + ss2
+		r.Time, err = time.Parse(bsdFormat, ss)
+		if err != nil {
+			return record{}, err
+		}
 	}
 	r.Hostname, err = readUntil(" ", 1)
 	if err != nil {

@@ -3,7 +3,6 @@ package exporter
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"regexp"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sergeymakinen/postfix_exporter/v2/config"
 )
 
 // Collector types.
@@ -57,11 +57,15 @@ var (
 	reLostConnection       = regexp.MustCompile(`^lost connection after (.+?) from ` + hostnameWithIPAddrPart)
 	reMilter               = regexp.MustCompile(`^.+?: milter-([a-z-]+): .+? from ` + hostnameWithIPAddrPart)
 	reLoginFailed          = regexp.MustCompile(`^` + hostnameWithIPAddrPart + `: SASL (.+?) authentication failed:`)
-	reNoqueueReject        = regexp.MustCompile(`^NOQUEUE: reject: (\w+) from ` + hostnameWithIPAddrPart + `: \d+ [\d.]+ (<[^>]+>: )?([^;]+); `)
-	reNoqueueRejectReason  = regexp.MustCompile(`^(Client host rejected: cannot find your hostname|Recipient address rejected: Rejected by SPF)`)
+	reNoqueueReject        = regexp.MustCompile(`^NOQUEUE: reject: (\w+) from ` + hostnameWithIPAddrPart + `: (\d+) ([\d.]+) (<[^>]+>: )?([^;]+); `)
 
 	reQueueStatus = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z-]+) \(.+?\)$`)
 	reQmgrStatus  = regexp.MustCompile(`status=([a-z-]+), .+?$`)
+
+	hostReplyPart     = `host ` + hostnameWithIPAddrPart + ` said: (.+) \(in reply to \w+[\w /-]*\)`
+	reHostReply       = regexp.MustCompile(hostReplyPart)
+	reHostReplyStatus = regexp.MustCompile(`^(\d{3})(.{1,3}(\d\.\d\.\d)|[^ ]+) (.+)$`)
+	reSmtpHostReply   = regexp.MustCompile(`^\w+: ` + hostReplyPart + `$`)
 )
 
 // Exporter collects Postfix stats from logs and exports them
@@ -70,24 +74,27 @@ type Exporter struct {
 	collector io.Closer
 	instance  string
 	logger    log.Logger
+	config    *config.Config
 
-	errors              prometheus.Counter
-	foreign             prometheus.Counter
-	unsupported         prometheus.Counter
-	postscreen          *prometheus.CounterVec
-	connects            *prometheus.CounterVec
-	disconnects         *prometheus.CounterVec
-	lostConnections     *prometheus.CounterVec
-	hostnameNotResolved *prometheus.CounterVec
-	lmtpStatuses        *prometheus.CounterVec
-	lmtpDelays          *prometheus.SummaryVec
-	smtpStatuses        *prometheus.CounterVec
-	smtpDelays          *prometheus.SummaryVec
-	milter              *prometheus.CounterVec
-	loginFailed         *prometheus.CounterVec
-	qmgrStatuses        *prometheus.CounterVec
-	logs                *prometheus.CounterVec
-	noqueueRejects      *prometheus.CounterVec
+	errors               prometheus.Counter
+	foreign              prometheus.Counter
+	unsupported          prometheus.Counter
+	postscreen           *prometheus.CounterVec
+	connects             *prometheus.CounterVec
+	disconnects          *prometheus.CounterVec
+	lostConnections      *prometheus.CounterVec
+	hostnameNotResolved  *prometheus.CounterVec
+	lmtpStatuses         *prometheus.CounterVec
+	lmtpDelays           *prometheus.SummaryVec
+	smtpStatuses         *prometheus.CounterVec
+	smtpStatusReplies    *prometheus.CounterVec
+	smtpReplies          *prometheus.CounterVec
+	smtpDelays           *prometheus.SummaryVec
+	milter               *prometheus.CounterVec
+	loginFailed          *prometheus.CounterVec
+	qmgrStatuses         *prometheus.CounterVec
+	logs                 *prometheus.CounterVec
+	noqueueRejectReplies *prometheus.CounterVec
 }
 
 // Close stops collecting new logs.
@@ -109,12 +116,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.lmtpStatuses.Describe(ch)
 	e.lmtpDelays.Describe(ch)
 	e.smtpStatuses.Describe(ch)
+	e.smtpStatusReplies.Describe(ch)
+	e.smtpReplies.Describe(ch)
 	e.smtpDelays.Describe(ch)
 	e.milter.Describe(ch)
 	e.loginFailed.Describe(ch)
 	e.qmgrStatuses.Describe(ch)
 	e.logs.Describe(ch)
-	e.noqueueRejects.Describe(ch)
+	e.noqueueRejectReplies.Describe(ch)
 }
 
 // Collect delivers collected Postfix statistics as Prometheus metrics.
@@ -131,18 +140,20 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.lmtpStatuses.Collect(ch)
 	e.lmtpDelays.Collect(ch)
 	e.smtpStatuses.Collect(ch)
+	e.smtpStatusReplies.Collect(ch)
+	e.smtpReplies.Collect(ch)
 	e.smtpDelays.Collect(ch)
 	e.milter.Collect(ch)
 	e.loginFailed.Collect(ch)
 	e.qmgrStatuses.Collect(ch)
 	e.logs.Collect(ch)
-	e.noqueueRejects.Collect(ch)
+	e.noqueueRejectReplies.Collect(ch)
 }
 
 func (e *Exporter) scrape(r record, err error) {
 	if err != nil {
 		e.errors.Inc()
-		level.Debug(e.logger).Log("msg", "Error parsing log record", "err", err)
+		level.Warn(e.logger).Log("msg", "Error parsing log record", "err", err, "record", r)
 		return
 	}
 	if r.Program != e.instance {
@@ -195,14 +206,14 @@ func (e *Exporter) scrape(r record, err error) {
 	} else if r.Subprogram == "smtpd" || strings.HasSuffix(r.Subprogram, "/smtpd") {
 		if strings.HasPrefix(r.Text, "NOQUEUE: reject:") {
 			if matches := reNoqueueReject.FindStringSubmatch(r.Text); matches != nil {
-				reason := matches[3]
-				if reasonMatches := reNoqueueRejectReason.FindStringSubmatch(reason); reasonMatches != nil {
-					reason = reasonMatches[1]
+				if cfg, m := findSubmatch(e.config.NoqueueRejectReplies, func(cfg config.NoqueueRejectReplyConfig) []int {
+					return cfg.Regexp.FindStringSubmatchIndex(matches[5])
+				}); m != nil {
+					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, matches[5], m))
+					e.noqueueRejectReplies.WithLabelValues(r.Subprogram, matches[1], matches[2], matches[3], text).Inc()
 				}
-				e.noqueueRejects.WithLabelValues(r.Subprogram, matches[1], reason).Inc()
 			} else {
-				e.noqueueRejects.WithLabelValues(r.Subprogram, "FIXME", "unsupported").Inc()
-				level.Warn(e.logger).Log("msg", "Unsupported NOQUEUE: reject log record", "record", r)
+				found = false
 			}
 		} else if matches := reConnect.FindStringSubmatch(r.Text); matches != nil {
 			e.connects.WithLabelValues(r.Subprogram).Inc()
@@ -224,6 +235,37 @@ func (e *Exporter) scrape(r record, err error) {
 			e.smtpStatuses.WithLabelValues(matches[2]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
 			e.smtpDelays.WithLabelValues(matches[2]).Observe(f)
+			if m := reHostReply.FindStringSubmatch(r.Text); m != nil {
+				reply, err := parseHostReply(m[1])
+				if err == nil {
+					if cfg, m := findSubmatch(e.config.HostReplies, func(cfg config.HostReplyConfig) []int {
+						if cfg.Type != config.HostReplyAny && cfg.Type != config.HostReplyQueueStatus {
+							return nil
+						}
+						return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
+					}); m != nil {
+						text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
+						e.smtpStatusReplies.WithLabelValues(matches[2], reply.Code, reply.EnhancedCode, text).Inc()
+					}
+				} else {
+					level.Warn(e.logger).Log("msg", "Error parsing host reply", "err", err, "record", r)
+				}
+			}
+		} else if matches := reSmtpHostReply.FindStringSubmatch(r.Text); matches != nil {
+			reply, err := parseHostReply(matches[1])
+			if err == nil {
+				if cfg, m := findSubmatch(e.config.HostReplies, func(cfg config.HostReplyConfig) []int {
+					if cfg.Type != config.HostReplyAny && cfg.Type != config.HostReplyOther {
+						return nil
+					}
+					return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
+				}); m != nil {
+					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
+					e.smtpReplies.WithLabelValues(reply.Code, reply.EnhancedCode, text).Inc()
+				}
+			} else {
+				level.Warn(e.logger).Log("msg", "Error parsing host reply", "err", err, "record", r)
+			}
 		} else {
 			found = false
 		}
@@ -258,11 +300,12 @@ func (e *Exporter) scrape(r record, err error) {
 }
 
 // New returns an initialized exporter.
-func New(collectorType int, instance, logPath, journaldPath, journaldUnit string, logger log.Logger) (*Exporter, error) {
+func New(collectorType int, instance, logPath, journaldPath, journaldUnit string, config *config.Config, logger log.Logger) (*Exporter, error) {
 	quantiles := map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}
 	e := &Exporter{
 		instance: instance,
 		logger:   logger,
+		config:   config,
 
 		errors: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
@@ -320,6 +363,16 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 			Name:      "smtp_statuses_total",
 			Help:      "Total number of times SMTP server message status change events were collected.",
 		}, []string{"status"}),
+		smtpStatusReplies: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "smtp_status_replies_total",
+			Help:      "Total number of times SMTP server message status change event replies were collected.",
+		}, []string{"status", "code", "enhanced_code", "text"}),
+		smtpReplies: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "smtp_replies_total",
+			Help:      "Total number of times SMTP server replies were collected.",
+		}, []string{"code", "enhanced_code", "text"}),
 		smtpDelays: prometheus.NewSummaryVec(prometheus.SummaryOpts{
 			Namespace:  namespace,
 			Name:       "smtp_delay_seconds",
@@ -346,11 +399,11 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 			Name:      "logs_total",
 			Help:      "Total number of log records processed.",
 		}, []string{"subprogram", "severity"}),
-		noqueueRejects: prometheus.NewCounterVec(prometheus.CounterOpts{
+		noqueueRejectReplies: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "noqueue_rejects_total",
-			Help:      "Total number of times NOQUEUE: reject events were collected.",
-		}, []string{"subprogram", "command", "message"}),
+			Name:      "noqueue_reject_replies_total",
+			Help:      "Total number of times NOQUEUE: reject event replies were collected.",
+		}, []string{"subprogram", "command", "code", "enhanced_code", "text"}),
 	}
 	var err error
 	switch collectorType {
@@ -359,10 +412,41 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 	case CollectorJournald:
 		e.collector, err = collectFromJournald(journaldPath, journaldUnit, e.scrape)
 	default:
-		err = fmt.Errorf("unknown collector type %d", collectorType)
+		err = errors.New("unknown collector type " + strconv.Itoa(collectorType))
 	}
 	if err != nil {
 		return nil, err
 	}
 	return e, nil
+}
+
+type hostReply struct {
+	Code         string
+	EnhancedCode string
+	Text         string
+}
+
+func parseHostReply(s string) (*hostReply, error) {
+	matches := reHostReplyStatus.FindStringSubmatch(s)
+	if matches == nil {
+		return nil, errors.New("failed to find host reply in " + strconv.Quote(s))
+	}
+	reply := &hostReply{
+		Code: matches[1],
+		Text: matches[len(matches)-1],
+	}
+	if len(matches) == 5 {
+		reply.EnhancedCode = matches[3]
+	}
+	return reply, nil
+}
+
+func findSubmatch[S ~[]E, E any](slice S, f func(E) []int) (E, []int) {
+	var zero E
+	for _, e := range slice {
+		if m := f(e); m != nil {
+			return e, m
+		}
+	}
+	return zero, nil
 }

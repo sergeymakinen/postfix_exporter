@@ -12,10 +12,15 @@ import (
 	"github.com/coreos/go-systemd/v22/journal"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/sergeymakinen/postfix_exporter/v2/config"
 )
 
 func TestExporter_Collect_Journald(t *testing.T) {
-	exporter, err := New(CollectorJournald, "postfix", "", "", "", log.NewNopLogger())
+	cfg, err := config.Load("testdata/postfix.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	exporter, err := New(CollectorJournald, "postfix", "", "", "", cfg, log.NewNopLogger())
 	if err == ErrUnsupportedCollector {
 		t.Skip(err)
 	}
@@ -48,7 +53,7 @@ func TestExporter_Collect_Journald(t *testing.T) {
 			}
 			err = journal.Send(severity+r.Text, journal.PriInfo, map[string]string{
 				"SYSLOG_IDENTIFIER": id,
-				"SYSLOG_TIMESTAMP":  r.Time.Format(timeFormat) + " ",
+				"SYSLOG_TIMESTAMP":  r.Time.Format(bsdFormat) + " ",
 			})
 			if err != nil {
 				t.Fatal(err)
