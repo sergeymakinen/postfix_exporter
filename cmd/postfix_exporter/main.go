@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
@@ -13,11 +13,14 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
-	"github.com/sergeymakinen/postfix_exporter/exporter"
+	"github.com/sergeymakinen/postfix_exporter/v2/config"
+	"github.com/sergeymakinen/postfix_exporter/v2/exporter"
 )
 
 func main() {
 	var (
+		configFile   = kingpin.Flag("config.file", "Postfix exporter configuration file.").String()
+		configCheck  = kingpin.Flag("config.check", "If true validate the config file and then exit.").Default().Bool()
 		collector    = kingpin.Flag("collector", "Collector type to scrape metrics with. One of: [file, journald]").Default("file").Enum("file", "journald")
 		instance     = kingpin.Flag("postfix.instance", "Postfix instance name.").Default("postfix").String()
 		logPath      = kingpin.Flag("file.log", "Path to a file containing Postfix logs.").Default("/var/log/mail.log").String()
@@ -36,12 +39,29 @@ func main() {
 	level.Info(logger).Log("msg", "Starting postfix_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
 
+	var (
+		cfg *config.Config
+		err error
+	)
+	if *configFile != "" {
+		cfg, err = config.Load((*configFile))
+		if err != nil {
+			level.Error(logger).Log("msg", "Error loading config", "err", err)
+			os.Exit(1)
+		}
+		if *configCheck {
+			level.Info(logger).Log("msg", "Config file is ok, exiting...")
+			return
+		}
+		level.Info(logger).Log("msg", "Loaded config file")
+	}
+
 	prometheus.MustRegister(version.NewCollector("postfix_exporter"))
 	collectorType := exporter.CollectorFile
 	if *collector == "journald" {
 		collectorType = exporter.CollectorJournald
 	}
-	exporter, err := exporter.New(collectorType, *instance, *logPath, *journaldPath, *journaldUnit, logger)
+	exporter, err := exporter.New(collectorType, *instance, *logPath, *journaldPath, *journaldUnit, cfg, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Error creating the exporter", "err", err)
 		os.Exit(1)

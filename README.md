@@ -1,7 +1,7 @@
 # Postfix Exporter
 
 [![tests](https://github.com/sergeymakinen/postfix_exporter/workflows/tests/badge.svg)](https://github.com/sergeymakinen/postfix_exporter/actions?query=workflow%3Atests)
-[![Go Reference](https://pkg.go.dev/badge/github.com/sergeymakinen/postfix_exporter.svg)](https://pkg.go.dev/github.com/sergeymakinen/postfix_exporter)
+[![Go Reference](https://pkg.go.dev/badge/github.com/sergeymakinen/postfix_exporter.svg)](https://pkg.go.dev/github.com/sergeymakinen/postfix_exporter/v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sergeymakinen/postfix_exporter)](https://goreportcard.com/report/github.com/sergeymakinen/postfix_exporter)
 [![codecov](https://codecov.io/gh/sergeymakinen/postfix_exporter/branch/main/graph/badge.svg)](https://codecov.io/gh/sergeymakinen/postfix_exporter)
 
@@ -29,12 +29,14 @@ make
 | postfix_lmtp_statuses_total | Total number of times LMTP server message status change events were collected. | status
 | postfix_lmtp_delay_seconds | Delay in seconds for a LMTP server to process a message. | status
 | postfix_smtp_statuses_total | Total number of times SMTP server message status change events were collected. | status
+| postfix_smtp_status_replies_total | Total number of times SMTP server message status change event replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | status, code, enhanced_code, text
+| postfix_smtp_replies_total | Total number of times SMTP server replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | code, enhanced_code, text
 | postfix_smtp_delay_seconds | Delay in seconds for a SMTP server to process a message. | status
 | postfix_milter_actions_total | Total number of times milter events were collected. | subprogram, action
 | postfix_login_failures_total | Total number of times login failure events were collected. | subprogram, method
 | postfix_qmgr_statuses_total | Total number of times Postfix queue manager message status change events were collected. | status
 | postfix_logs_total | Total number of log records processed. | subprogram, severity
-| postfix_noqueue_rejects_total | Total number of times NOQUEUE: reject events were collected. | subprogram, command, message
+| postfix_noqueue_reject_replies_total | Total number of times NOQUEUE: reject event replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | subprogram, command, code, enhanced_code, text
 
 ## Flags
 
@@ -42,6 +44,8 @@ make
 ./postfix_exporter --help
 ```
 
+* __`config.file`:__ Postfix exporter [configuration file](CONFIGURATION.md).
+* __`config.check`:__ If true validate the config file and then exit.
 * __`collector`:__ Collector type to scrape metrics with. `file` or `journald`.
 * __`postfix.instance`:__ Postfix instance name. `postfix` by default.
 * __`file.log`:__ Path to a file containing Postfix logs. Example: `/var/log/mail.log`.

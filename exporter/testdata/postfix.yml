@@ -1,0 +1,14 @@
+host_replies:
+  - regexp: out of storage
+    text: storage
+  - type: queue_status
+    regexp: (.+)
+    text: $1
+  - type: other
+    regexp: (?i)gr(a|e)ylist
+    text: graylist
+noqueue_reject_replies:
+  - regexp: '(Client host rejected: cannot find your hostname|Recipient address rejected: Rejected by SPF)'
+    text: $1
+  - regexp: (.+)
+    text: $1
