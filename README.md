@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/sergeymakinen/postfix_exporter/workflows/tests/badge.svg)](https://github.com/sergeymakinen/postfix_exporter/actions?query=workflow%3Atests)
 [![Go Reference](https://pkg.go.dev/badge/github.com/sergeymakinen/postfix_exporter.svg)](https://pkg.go.dev/github.com/sergeymakinen/postfix_exporter/v2)
-[![Go Report Card](https://goreportcard.com/badge/github.com/sergeymakinen/postfix_exporter)](https://goreportcard.com/report/github.com/sergeymakinen/postfix_exporter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sergeymakinen/postfix_exporter/v2)](https://goreportcard.com/report/github.com/sergeymakinen/postfix_exporter/v2)
 [![codecov](https://codecov.io/gh/sergeymakinen/postfix_exporter/branch/main/graph/badge.svg)](https://codecov.io/gh/sergeymakinen/postfix_exporter)
 
 Export Postfix stats from logs to Prometheus.
