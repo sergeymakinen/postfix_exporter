@@ -1,4 +1,7 @@
 host_replies:
+  - type: other
+    regexp: ignored
+    text: ignore
   - regexp: out of storage
     text: storage
   - type: queue_status
