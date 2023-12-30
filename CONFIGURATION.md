@@ -41,6 +41,10 @@ In this case:
 statuses:
   [ - <string>, ... ]
 
+# Ignore specific statuses.
+not_statuses:
+  [ - <string>, ... ]
+
 # The regular expression matching the reply code, enhanced code or text.
 regexp: <regex>
 

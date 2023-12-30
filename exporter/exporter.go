@@ -182,6 +182,11 @@ func (e *Exporter) scrape(r record, err error) {
 						return nil
 					}
 				}
+				for _, status := range cfg.NotStatuses {
+					if status == matches[2] {
+						return nil
+					}
+				}
 				return cfg.Regexp.FindStringSubmatchIndex(match(cfg.Match))
 			}); m != nil {
 				text := string(cfg.Regexp.ExpandString(nil, cfg.Text, match(cfg.Match), m))

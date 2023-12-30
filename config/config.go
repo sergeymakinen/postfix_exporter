@@ -31,10 +31,11 @@ func Load(name string) (*Config, error) {
 }
 
 type StatusReplyMatchConfig struct {
-	Statuses []string  `yaml:"statuses,omitempty"`
-	Regexp   *Regexp   `yaml:"regexp"`
-	Match    MatchType `yaml:"match,omitempty"`
-	Text     string    `yaml:"text"`
+	Statuses    []string  `yaml:"statuses,omitempty"`
+	NotStatuses []string  `yaml:"not_statuses,omitempty"`
+	Regexp      *Regexp   `yaml:"regexp"`
+	Match       MatchType `yaml:"match,omitempty"`
+	Text        string    `yaml:"text"`
 }
 
 func (cfg *StatusReplyMatchConfig) UnmarshalYAML(value *yaml.Node) error {
