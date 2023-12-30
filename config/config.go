@@ -2,41 +2,43 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	HostReplies          []HostReplyConfig          `yaml:"host_replies,omitempty"`
-	NoqueueRejectReplies []NoqueueRejectReplyConfig `yaml:"noqueue_reject_replies,omitempty"`
+	StatusReplies        []StatusReplyMatchConfig `yaml:"status_replies,omitempty"`
+	SmtpReplies          []ReplyMatchConfig       `yaml:"smtp_replies,omitempty"`
+	NoqueueRejectReplies []ReplyMatchConfig       `yaml:"noqueue_reject_replies,omitempty"`
 }
 
 func Load(name string) (*Config, error) {
 	f, err := os.Open(name)
 	if err != nil {
-		return nil, fmt.Errorf("error reading config file: %v", err)
+		return nil, errors.New("error reading config file: " + err.Error())
 	}
 	defer f.Close()
 	d := yaml.NewDecoder(f)
 	d.KnownFields(true)
 	var cfg Config
 	if err = d.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("error parsing config file: %v", err)
+		return nil, errors.New("error parsing config file: " + err.Error())
 	}
 	return &cfg, nil
 }
 
-type HostReplyConfig struct {
-	Type   HostReplyType `yaml:"type,omitempty"`
-	Regexp *Regexp       `yaml:"regexp"`
-	Text   string        `yaml:"text"`
+type StatusReplyMatchConfig struct {
+	Statuses []string  `yaml:"statuses,omitempty"`
+	Regexp   *Regexp   `yaml:"regexp"`
+	Match    MatchType `yaml:"match,omitempty"`
+	Text     string    `yaml:"text"`
 }
 
-func (cfg *HostReplyConfig) UnmarshalYAML(value *yaml.Node) error {
-	type plain HostReplyConfig
+func (cfg *StatusReplyMatchConfig) UnmarshalYAML(value *yaml.Node) error {
+	type plain StatusReplyMatchConfig
 	if err := value.Decode((*plain)(cfg)); err != nil {
 		return err
 	}
@@ -46,48 +48,49 @@ func (cfg *HostReplyConfig) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
-type HostReplyType int
+type ReplyMatchConfig struct {
+	Regexp *Regexp   `yaml:"regexp"`
+	Match  MatchType `yaml:"match,omitempty"`
+	Text   string    `yaml:"text"`
+}
 
-func (t *HostReplyType) UnmarshalYAML(value *yaml.Node) error {
+func (cfg *ReplyMatchConfig) UnmarshalYAML(value *yaml.Node) error {
+	type plain ReplyMatchConfig
+	if err := value.Decode((*plain)(cfg)); err != nil {
+		return err
+	}
+	if cfg.Text == "" {
+		return errors.New("empty text replacement")
+	}
+	return nil
+}
+
+type MatchType int
+
+func (t *MatchType) UnmarshalYAML(value *yaml.Node) error {
 	var s string
 	if err := value.Decode(&s); err != nil {
 		return err
 	}
 	switch s {
-	case "", "any":
-		*t = HostReplyAny
-	case "queue_status":
-		*t = HostReplyQueueStatus
-	case "other":
-		*t = HostReplyOther
+	case "", "text":
+		*t = MatchTypeText
+	case "code":
+		*t = MatchTypeCode
+	case "enhanced_code":
+		*t = MatchTypeEnhancedCode
 	default:
-		return fmt.Errorf("unsupported host reply type %q", s)
+		return errors.New("unsupported match type " + strconv.Quote(s))
 	}
 	return nil
 }
 
-// HostReplyType types.
+// MatchType types.
 const (
-	HostReplyAny HostReplyType = iota
-	HostReplyQueueStatus
-	HostReplyOther
+	MatchTypeText MatchType = iota
+	MatchTypeCode
+	MatchTypeEnhancedCode
 )
-
-type NoqueueRejectReplyConfig struct {
-	Regexp *Regexp `yaml:"regexp"`
-	Text   string  `yaml:"text"`
-}
-
-func (cfg *NoqueueRejectReplyConfig) UnmarshalYAML(value *yaml.Node) error {
-	type plain NoqueueRejectReplyConfig
-	if err := value.Decode((*plain)(cfg)); err != nil {
-		return err
-	}
-	if cfg.Text == "" {
-		return errors.New("empty text replacement")
-	}
-	return nil
-}
 
 type Regexp struct {
 	*regexp.Regexp

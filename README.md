@@ -26,12 +26,10 @@ make
 | postfix_disconnects_total | Total number of times disconnect events were collected. | subprogram
 | postfix_lost_connections_total | Total number of times lost connection events were collected. | subprogram
 | postfix_not_resolved_hostnames_total | Total number of times not resolved hostname events were collected. | subprogram
-| postfix_lmtp_statuses_total | Total number of times LMTP server message status change events were collected. | status
-| postfix_lmtp_delay_seconds | Delay in seconds for a LMTP server to process a message. | status
-| postfix_smtp_statuses_total | Total number of times SMTP server message status change events were collected. | status
-| postfix_smtp_status_replies_total | Total number of times SMTP server message status change event replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | status, code, enhanced_code, text
+| postfix_statuses_total | Total number of times server message status change events were collected. | subprogram, status
+| postfix_delay_seconds | Delay in seconds for a server to process a message. | subprogram, status
+| postfix_status_replies_total | Total number of times server message status change event replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | subprogram, status, code, enhanced_code, text
 | postfix_smtp_replies_total | Total number of times SMTP server replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | code, enhanced_code, text
-| postfix_smtp_delay_seconds | Delay in seconds for a SMTP server to process a message. | status
 | postfix_milter_actions_total | Total number of times milter events were collected. | subprogram, action
 | postfix_login_failures_total | Total number of times login failure events were collected. | subprogram, method
 | postfix_qmgr_statuses_total | Total number of times Postfix queue manager message status change events were collected. | status

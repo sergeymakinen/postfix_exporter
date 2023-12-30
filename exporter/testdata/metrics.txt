@@ -1,19 +1,36 @@
 # HELP postfix_connects_total Total number of times connect events were collected.
 # TYPE postfix_connects_total counter
 postfix_connects_total{subprogram="smtpd"} 1
+# HELP postfix_delay_seconds Delay in seconds for a server to process a message.
+# TYPE postfix_delay_seconds summary
+postfix_delay_seconds{status="bounced",subprogram="lmtp",quantile="0.5"} 1.23
+postfix_delay_seconds{status="bounced",subprogram="lmtp",quantile="0.9"} 1.23
+postfix_delay_seconds{status="bounced",subprogram="lmtp",quantile="0.99"} 1.23
+postfix_delay_seconds_sum{status="bounced",subprogram="lmtp"} 1.23
+postfix_delay_seconds_count{status="bounced",subprogram="lmtp"} 1
+postfix_delay_seconds{status="bounced",subprogram="smtp",quantile="0.5"} 1.23
+postfix_delay_seconds{status="bounced",subprogram="smtp",quantile="0.9"} 1.23
+postfix_delay_seconds{status="bounced",subprogram="smtp",quantile="0.99"} 1.23
+postfix_delay_seconds_sum{status="bounced",subprogram="smtp"} 1.23
+postfix_delay_seconds_count{status="bounced",subprogram="smtp"} 1
+postfix_delay_seconds{status="deferred",subprogram="smtp",quantile="0.5"} 2
+postfix_delay_seconds{status="deferred",subprogram="smtp",quantile="0.9"} 2
+postfix_delay_seconds{status="deferred",subprogram="smtp",quantile="0.99"} 2
+postfix_delay_seconds_sum{status="deferred",subprogram="smtp"} 4
+postfix_delay_seconds_count{status="deferred",subprogram="smtp"} 2
+postfix_delay_seconds{status="sent",subprogram="lmtp",quantile="0.5"} 0.12
+postfix_delay_seconds{status="sent",subprogram="lmtp",quantile="0.9"} 0.12
+postfix_delay_seconds{status="sent",subprogram="lmtp",quantile="0.99"} 0.12
+postfix_delay_seconds_sum{status="sent",subprogram="lmtp"} 0.12
+postfix_delay_seconds_count{status="sent",subprogram="lmtp"} 1
+postfix_delay_seconds{status="sent",subprogram="smtp",quantile="0.5"} 0.12
+postfix_delay_seconds{status="sent",subprogram="smtp",quantile="0.9"} 0.12
+postfix_delay_seconds{status="sent",subprogram="smtp",quantile="0.99"} 0.12
+postfix_delay_seconds_sum{status="sent",subprogram="smtp"} 0.12
+postfix_delay_seconds_count{status="sent",subprogram="smtp"} 1
 # HELP postfix_disconnects_total Total number of times disconnect events were collected.
 # TYPE postfix_disconnects_total counter
 postfix_disconnects_total{subprogram="smtpd"} 1
-# HELP postfix_lmtp_delay_seconds Delay in seconds for a LMTP server to process a message.
-# TYPE postfix_lmtp_delay_seconds summary
-postfix_lmtp_delay_seconds{status="sent",quantile="0.5"} 0.12
-postfix_lmtp_delay_seconds{status="sent",quantile="0.9"} 0.12
-postfix_lmtp_delay_seconds{status="sent",quantile="0.99"} 0.12
-postfix_lmtp_delay_seconds_sum{status="sent"} 0.12
-postfix_lmtp_delay_seconds_count{status="sent"} 1
-# HELP postfix_lmtp_statuses_total Total number of times LMTP server message status change events were collected.
-# TYPE postfix_lmtp_statuses_total counter
-postfix_lmtp_statuses_total{status="sent"} 1
 # HELP postfix_login_failures_total Total number of times login failure events were collected.
 # TYPE postfix_login_failures_total counter
 postfix_login_failures_total{method="LOGIN",subprogram="smtpd"} 1
@@ -21,7 +38,7 @@ postfix_login_failures_total{method="LOGIN",subprogram="smtpd"} 1
 # TYPE postfix_logs_total counter
 postfix_logs_total{severity="error",subprogram="postscreen"} 1
 postfix_logs_total{severity="info",subprogram="cleanup"} 2
-postfix_logs_total{severity="info",subprogram="lmtp"} 2
+postfix_logs_total{severity="info",subprogram="lmtp"} 3
 postfix_logs_total{severity="info",subprogram="postscreen"} 22
 postfix_logs_total{severity="info",subprogram="qmgr"} 2
 postfix_logs_total{severity="info",subprogram="smtp"} 8
@@ -70,35 +87,22 @@ postfix_postscreen_actions_total{action="WHITELISTED"} 1
 # HELP postfix_qmgr_statuses_total Total number of times Postfix queue manager message status change events were collected.
 # TYPE postfix_qmgr_statuses_total counter
 postfix_qmgr_statuses_total{status="expired"} 1
-# HELP postfix_smtp_delay_seconds Delay in seconds for a SMTP server to process a message.
-# TYPE postfix_smtp_delay_seconds summary
-postfix_smtp_delay_seconds{status="bounced",quantile="0.5"} 1.23
-postfix_smtp_delay_seconds{status="bounced",quantile="0.9"} 1.23
-postfix_smtp_delay_seconds{status="bounced",quantile="0.99"} 1.23
-postfix_smtp_delay_seconds_sum{status="bounced"} 1.23
-postfix_smtp_delay_seconds_count{status="bounced"} 1
-postfix_smtp_delay_seconds{status="deferred",quantile="0.5"} 2
-postfix_smtp_delay_seconds{status="deferred",quantile="0.9"} 2
-postfix_smtp_delay_seconds{status="deferred",quantile="0.99"} 2
-postfix_smtp_delay_seconds_sum{status="deferred"} 4
-postfix_smtp_delay_seconds_count{status="deferred"} 2
-postfix_smtp_delay_seconds{status="sent",quantile="0.5"} 0.12
-postfix_smtp_delay_seconds{status="sent",quantile="0.9"} 0.12
-postfix_smtp_delay_seconds{status="sent",quantile="0.99"} 0.12
-postfix_smtp_delay_seconds_sum{status="sent"} 0.12
-postfix_smtp_delay_seconds_count{status="sent"} 1
 # HELP postfix_smtp_replies_total Total number of times SMTP server replies were collected.
 # TYPE postfix_smtp_replies_total counter
 postfix_smtp_replies_total{code="123",enhanced_code="1.2.3",text="graylist"} 1
-# HELP postfix_smtp_status_replies_total Total number of times SMTP server message status change event replies were collected.
-# TYPE postfix_smtp_status_replies_total counter
-postfix_smtp_status_replies_total{code="123",enhanced_code="1.2.3",status="bounced",text="DKIM unauthenticated mail is prohibited, please check your DKIM signature. If you believe that this failure is in error, please refer to https://tools.ietf.org/html/rfc6376 or contact user@example.com for more information via alternate means."} 1
-postfix_smtp_status_replies_total{code="123",enhanced_code="1.2.3",status="deferred",text="storage"} 1
-# HELP postfix_smtp_statuses_total Total number of times SMTP server message status change events were collected.
-# TYPE postfix_smtp_statuses_total counter
-postfix_smtp_statuses_total{status="bounced"} 1
-postfix_smtp_statuses_total{status="deferred"} 2
-postfix_smtp_statuses_total{status="sent"} 1
+# HELP postfix_status_replies_total Total number of times server message status change event replies were collected.
+# TYPE postfix_status_replies_total counter
+postfix_status_replies_total{code="123",enhanced_code="1.2.3",status="bounced",subprogram="smtp",text="local_conf_problem"} 1
+postfix_status_replies_total{code="123",enhanced_code="1.2.3",status="deferred",subprogram="smtp",text="storage"} 1
+postfix_status_replies_total{code="250",enhanced_code="2.0.0",status="sent",subprogram="lmtp",text="sent"} 1
+postfix_status_replies_total{code="250",enhanced_code="2.0.0",status="sent",subprogram="smtp",text="sent"} 1
+# HELP postfix_statuses_total Total number of times server message status change events were collected.
+# TYPE postfix_statuses_total counter
+postfix_statuses_total{status="bounced",subprogram="lmtp"} 1
+postfix_statuses_total{status="bounced",subprogram="smtp"} 1
+postfix_statuses_total{status="deferred",subprogram="smtp"} 2
+postfix_statuses_total{status="sent",subprogram="lmtp"} 1
+postfix_statuses_total{status="sent",subprogram="smtp"} 1
 # HELP postfix_unsupported_total Total number of unsupported log records.
 # TYPE postfix_unsupported_total counter
 postfix_unsupported_total 8

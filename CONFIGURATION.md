@@ -14,44 +14,69 @@ The other placeholders are specified separately.
 See [postfix.yml](exporter/testdata/postfix.yml) for configuration examples.
 
 ```yml
-host_replies:
-  [ - <host_reply>, ... ]
+status_replies:
+  [ - <status_reply>, ... ]
+smtp_replies:
+  [ - <smtp_reply>, ... ]
 noqueue_reject_replies:
   [ - <noqueue_reject_reply>, ... ]
 ```
 
-### `<host_reply>`
+### `<status_reply>`
 
-Example log entry for `queue_status`:
+Example log entry:
 
 ```
 Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[123.45.67.89]:25, delay=1.23, delays=1.23/1.23/1.23/1.23, dsn=1.2.3, status=bounced (host example.com[123.45.67.89] said: 123 #1.2.3 Reasons (in reply to end of DATA command))
 ```
 
-Example log entry for `other`:
-
-```
-Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: host example.com[123.45.67.89] said: 123 1.2.3 Reasons (in reply to RCPT TO command)
-```
-
-In both cases:
+In this case:
 
 * `123` is a status code
 * `1.2.3` is an enhanced status code
 * `Reasons` is the text of the reply
 
 ```yml
-# The type of the reply. Accepted values: any, queue_status, other.
-[ type: <string> | default = "any" ]
+# Only allow specific statuses.
+statuses:
+  [ - <string>, ... ]
 
-# The regular expression matching the reply text.
+# The regular expression matching the reply code, enhanced code or text.
 regexp: <regex>
+
+# Match type. Accepted values: code, enhanced_code, text.
+[ match: <string> | default = "text" ]
 
 # The replacement text (may include placeholders supported by Go, see https://pkg.go.dev/regexp#Regexp.Expand).
 text: <string>
 ```
 
-### `<noqueue_reject_replies>`
+### `<smtp_reply>`
+
+Example log entry:
+
+```
+Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: host example.com[123.45.67.89] said: 123 1.2.3 Reasons (in reply to RCPT TO command)
+```
+
+In this case:
+
+* `123` is a status code
+* `1.2.3` is an enhanced status code
+* `Reasons` is the text of the reply
+
+```yml
+# The regular expression matching the reply code, enhanced code or text.
+regexp: <regex>
+
+# Match type. Accepted values: code, enhanced_code, text.
+[ match: <string> | default = "text" ]
+
+# The replacement text (may include placeholders supported by Go, see https://pkg.go.dev/regexp#Regexp.Expand).
+text: <string>
+```
+
+### `<noqueue_reject_reply>`
 
 Example log entry:
 
@@ -66,8 +91,11 @@ In this case:
 * `Reasons` is the text of the reply
 
 ```yml
-# The regular expression matching the reply text.
+# The regular expression matching the reply code, enhanced code or text.
 regexp: <regex>
+
+# Match type. Accepted values: code, enhanced_code, text.
+[ match: <string> | default = "text" ]
 
 # The replacement text (may include placeholders supported by Go, see https://pkg.go.dev/regexp#Regexp.Expand).
 text: <string>

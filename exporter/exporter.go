@@ -59,13 +59,13 @@ var (
 	reLoginFailed          = regexp.MustCompile(`^` + hostnameWithIPAddrPart + `: SASL (.+?) authentication failed:`)
 	reNoqueueReject        = regexp.MustCompile(`^NOQUEUE: reject: (\w+) from ` + hostnameWithIPAddrPart + `: (\d+) ([\d.]+) (<[^>]+>: )?([^;]+); `)
 
-	reQueueStatus = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z-]+) \(.+?\)$`)
+	reQueueStatus = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z-]+) \((.+?)\)$`)
 	reQmgrStatus  = regexp.MustCompile(`status=([a-z-]+), .+?$`)
 
-	hostReplyPart     = `host ` + hostnameWithIPAddrPart + ` said: (.+) \(in reply to \w+[\w /-]*\)`
-	reHostReply       = regexp.MustCompile(hostReplyPart)
+	hostSaidPart      = `host ` + hostnameWithIPAddrPart + ` said: (.+) \(in reply to \w+[\w /-]*\)`
+	reHostSaid        = regexp.MustCompile(hostSaidPart)
 	reHostReplyStatus = regexp.MustCompile(`^(\d{3})(.{1,3}(\d\.\d\.\d)|[^ ]+) (.+)$`)
-	reSmtpHostReply   = regexp.MustCompile(`^\w+: ` + hostReplyPart + `$`)
+	reSmtpHostSaid    = regexp.MustCompile(`^\w+: ` + hostSaidPart + `$`)
 )
 
 // Exporter collects Postfix stats from logs and exports them
@@ -84,12 +84,10 @@ type Exporter struct {
 	disconnects          *prometheus.CounterVec
 	lostConnections      *prometheus.CounterVec
 	hostnameNotResolved  *prometheus.CounterVec
-	lmtpStatuses         *prometheus.CounterVec
-	lmtpDelays           *prometheus.SummaryVec
-	smtpStatuses         *prometheus.CounterVec
-	smtpStatusReplies    *prometheus.CounterVec
+	statuses             *prometheus.CounterVec
+	delays               *prometheus.SummaryVec
+	statusReplies        *prometheus.CounterVec
 	smtpReplies          *prometheus.CounterVec
-	smtpDelays           *prometheus.SummaryVec
 	milter               *prometheus.CounterVec
 	loginFailed          *prometheus.CounterVec
 	qmgrStatuses         *prometheus.CounterVec
@@ -113,12 +111,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.disconnects.Describe(ch)
 	e.lostConnections.Describe(ch)
 	e.hostnameNotResolved.Describe(ch)
-	e.lmtpStatuses.Describe(ch)
-	e.lmtpDelays.Describe(ch)
-	e.smtpStatuses.Describe(ch)
-	e.smtpStatusReplies.Describe(ch)
+	e.statuses.Describe(ch)
+	e.delays.Describe(ch)
+	e.statusReplies.Describe(ch)
 	e.smtpReplies.Describe(ch)
-	e.smtpDelays.Describe(ch)
 	e.milter.Describe(ch)
 	e.loginFailed.Describe(ch)
 	e.qmgrStatuses.Describe(ch)
@@ -137,12 +133,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.disconnects.Collect(ch)
 	e.lostConnections.Collect(ch)
 	e.hostnameNotResolved.Collect(ch)
-	e.lmtpStatuses.Collect(ch)
-	e.lmtpDelays.Collect(ch)
-	e.smtpStatuses.Collect(ch)
-	e.smtpStatusReplies.Collect(ch)
+	e.statuses.Collect(ch)
+	e.delays.Collect(ch)
+	e.statusReplies.Collect(ch)
 	e.smtpReplies.Collect(ch)
-	e.smtpDelays.Collect(ch)
 	e.milter.Collect(ch)
 	e.loginFailed.Collect(ch)
 	e.qmgrStatuses.Collect(ch)
@@ -153,7 +147,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) scrape(r record, err error) {
 	if err != nil {
 		e.errors.Inc()
-		level.Warn(e.logger).Log("msg", "Error parsing log record", "err", err, "record", r)
+		level.Debug(e.logger).Log("msg", "Error parsing log record", "err", err, "record", r)
 		return
 	}
 	if r.Program != e.instance {
@@ -162,6 +156,41 @@ func (e *Exporter) scrape(r record, err error) {
 		return
 	}
 	e.logs.WithLabelValues(r.Subprogram, string(r.Severity)).Inc()
+	parseStatusReply := func(matches []string) {
+		reply, err := parseHostReply(matches[3])
+		if err == nil {
+			match := func(typ config.MatchType) string {
+				switch typ {
+				case config.MatchTypeCode:
+					return reply.Code
+				case config.MatchTypeEnhancedCode:
+					return reply.EnhancedCode
+				default:
+					return reply.Text
+				}
+			}
+			if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
+				if len(cfg.Statuses) > 0 {
+					found := false
+					for _, status := range cfg.Statuses {
+						if status == matches[2] {
+							found = true
+							break
+						}
+					}
+					if !found {
+						return nil
+					}
+				}
+				return cfg.Regexp.FindStringSubmatchIndex(match(cfg.Match))
+			}); m != nil {
+				text := string(cfg.Regexp.ExpandString(nil, cfg.Text, match(cfg.Match), m))
+				e.statusReplies.WithLabelValues(r.Subprogram, matches[2], reply.Code, reply.EnhancedCode, text).Inc()
+			}
+		} else {
+			level.Warn(e.logger).Log("msg", "Error parsing host reply", "err", err, "record", r)
+		}
+	}
 	found := true
 	if r.Subprogram == "postscreen" {
 		if matches := rePsConnect.FindStringSubmatch(r.Text); matches != nil {
@@ -206,10 +235,20 @@ func (e *Exporter) scrape(r record, err error) {
 	} else if r.Subprogram == "smtpd" || strings.HasSuffix(r.Subprogram, "/smtpd") {
 		if strings.HasPrefix(r.Text, "NOQUEUE: reject:") {
 			if matches := reNoqueueReject.FindStringSubmatch(r.Text); matches != nil {
-				if cfg, m := findSubmatch(e.config.NoqueueRejectReplies, func(cfg config.NoqueueRejectReplyConfig) []int {
-					return cfg.Regexp.FindStringSubmatchIndex(matches[5])
+				match := func(typ config.MatchType) string {
+					switch typ {
+					case config.MatchTypeCode:
+						return matches[2]
+					case config.MatchTypeEnhancedCode:
+						return matches[3]
+					default:
+						return matches[5]
+					}
+				}
+				if cfg, m := findSubmatch(e.config.NoqueueRejectReplies, func(cfg config.ReplyMatchConfig) []int {
+					return cfg.Regexp.FindStringSubmatchIndex(match(cfg.Match))
 				}); m != nil {
-					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, matches[5], m))
+					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, match(cfg.Match), m))
 					e.noqueueRejectReplies.WithLabelValues(r.Subprogram, matches[1], matches[2], matches[3], text).Inc()
 				}
 			} else {
@@ -232,32 +271,28 @@ func (e *Exporter) scrape(r record, err error) {
 		}
 	} else if r.Subprogram == "smtp" {
 		if matches := reQueueStatus.FindStringSubmatch(r.Text); matches != nil {
-			e.smtpStatuses.WithLabelValues(matches[2]).Inc()
+			e.statuses.WithLabelValues(r.Subprogram, matches[2]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
-			e.smtpDelays.WithLabelValues(matches[2]).Observe(f)
-			if m := reHostReply.FindStringSubmatch(r.Text); m != nil {
+			e.delays.WithLabelValues(r.Subprogram, matches[2]).Observe(f)
+			if m := reHostSaid.FindStringSubmatch(matches[3]); m != nil {
 				reply, err := parseHostReply(m[1])
 				if err == nil {
-					if cfg, m := findSubmatch(e.config.HostReplies, func(cfg config.HostReplyConfig) []int {
-						if cfg.Type != config.HostReplyAny && cfg.Type != config.HostReplyQueueStatus {
-							return nil
-						}
+					if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
 						return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
 					}); m != nil {
 						text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
-						e.smtpStatusReplies.WithLabelValues(matches[2], reply.Code, reply.EnhancedCode, text).Inc()
+						e.statusReplies.WithLabelValues(r.Subprogram, matches[2], reply.Code, reply.EnhancedCode, text).Inc()
 					}
 				} else {
 					level.Warn(e.logger).Log("msg", "Error parsing host reply", "err", err, "record", r)
 				}
+			} else {
+				parseStatusReply(matches)
 			}
-		} else if matches := reSmtpHostReply.FindStringSubmatch(r.Text); matches != nil {
+		} else if matches := reSmtpHostSaid.FindStringSubmatch(r.Text); matches != nil {
 			reply, err := parseHostReply(matches[1])
 			if err == nil {
-				if cfg, m := findSubmatch(e.config.HostReplies, func(cfg config.HostReplyConfig) []int {
-					if cfg.Type != config.HostReplyAny && cfg.Type != config.HostReplyOther {
-						return nil
-					}
+				if cfg, m := findSubmatch(e.config.SmtpReplies, func(cfg config.ReplyMatchConfig) []int {
 					return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
 				}); m != nil {
 					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
@@ -271,9 +306,10 @@ func (e *Exporter) scrape(r record, err error) {
 		}
 	} else if r.Subprogram == "lmtp" {
 		if matches := reQueueStatus.FindStringSubmatch(r.Text); matches != nil {
-			e.lmtpStatuses.WithLabelValues(matches[2]).Inc()
+			e.statuses.WithLabelValues(r.Subprogram, matches[2]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
-			e.lmtpDelays.WithLabelValues(matches[2]).Observe(f)
+			e.delays.WithLabelValues(r.Subprogram, matches[2]).Observe(f)
+			parseStatusReply(matches)
 		} else {
 			found = false
 		}
@@ -347,38 +383,27 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 			Name:      "not_resolved_hostnames_total",
 			Help:      "Total number of times not resolved hostname events were collected.",
 		}, []string{"subprogram"}),
-		lmtpStatuses: prometheus.NewCounterVec(prometheus.CounterOpts{
+		statuses: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "lmtp_statuses_total",
-			Help:      "Total number of times LMTP server message status change events were collected.",
-		}, []string{"status"}),
-		lmtpDelays: prometheus.NewSummaryVec(prometheus.SummaryOpts{
+			Name:      "statuses_total",
+			Help:      "Total number of times server message status change events were collected.",
+		}, []string{"subprogram", "status"}),
+		delays: prometheus.NewSummaryVec(prometheus.SummaryOpts{
 			Namespace:  namespace,
-			Name:       "lmtp_delay_seconds",
-			Help:       "Delay in seconds for a LMTP server to process a message.",
+			Name:       "delay_seconds",
+			Help:       "Delay in seconds for a server to process a message.",
 			Objectives: quantiles,
-		}, []string{"status"}),
-		smtpStatuses: prometheus.NewCounterVec(prometheus.CounterOpts{
+		}, []string{"subprogram", "status"}),
+		statusReplies: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
-			Name:      "smtp_statuses_total",
-			Help:      "Total number of times SMTP server message status change events were collected.",
-		}, []string{"status"}),
-		smtpStatusReplies: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: namespace,
-			Name:      "smtp_status_replies_total",
-			Help:      "Total number of times SMTP server message status change event replies were collected.",
-		}, []string{"status", "code", "enhanced_code", "text"}),
+			Name:      "status_replies_total",
+			Help:      "Total number of times server message status change event replies were collected.",
+		}, []string{"subprogram", "status", "code", "enhanced_code", "text"}),
 		smtpReplies: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
 			Name:      "smtp_replies_total",
 			Help:      "Total number of times SMTP server replies were collected.",
 		}, []string{"code", "enhanced_code", "text"}),
-		smtpDelays: prometheus.NewSummaryVec(prometheus.SummaryOpts{
-			Namespace:  namespace,
-			Name:       "smtp_delay_seconds",
-			Help:       "Delay in seconds for a SMTP server to process a message.",
-			Objectives: quantiles,
-		}, []string{"status"}),
 		milter: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
 			Name:      "milter_actions_total",

@@ -1,14 +1,22 @@
-host_replies:
+status_replies:
   - type: other
     regexp: ignored
     text: ignore
   - regexp: out of storage
     text: storage
-  - type: queue_status
+  - statuses:
+      - sent
+    regexp: 2\.0\.0
+    match: enhanced_code
+    text: sent
+  - regexp: (?i)spf|dkim|dns
+    text: local_conf_problem
+  - statuses:
+      - sent
     regexp: (.+)
     text: $1
-  - type: other
-    regexp: (?i)gr(a|e)ylist
+smtp_replies:
+  - regexp: (?i)gr(a|e)ylist
     text: graylist
 noqueue_reject_replies:
   - regexp: '(Client host rejected: cannot find your hostname|Recipient address rejected: Rejected by SPF)'
