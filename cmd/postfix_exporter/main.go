@@ -44,7 +44,7 @@ func main() {
 		err error
 	)
 	if *configFile != "" {
-		cfg, err = config.Load((*configFile))
+		cfg, err = config.Load(*configFile)
 		if err != nil {
 			level.Error(logger).Log("msg", "Error loading config", "err", err)
 			os.Exit(1)
