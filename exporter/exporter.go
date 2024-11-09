@@ -288,7 +288,7 @@ func (e *Exporter) scrape(r record, err error) {
 						e.statusReplies.WithLabelValues(r.Subprogram, matches[2], reply.Code, reply.EnhancedCode, text).Inc()
 					}
 				} else {
-					e.logger.Warn("Error parsing host reply", "err", "record", r, err)
+					e.logger.Warn("Error parsing host reply", "record", r, "err", err)
 				}
 			} else {
 				parseStatusReply(matches)

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 	"github.com/sergeymakinen/postfix_exporter/v2/config"
 )
 
@@ -44,7 +44,7 @@ func TestExporter_Collect_File(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exporter, err := New(CollectorFile, "postfix", out.Name(), "", "", cfg, log.NewNopLogger())
+	exporter, err := New(CollectorFile, "postfix", out.Name(), "", "", cfg, promslog.NewNopLogger())
 	if err != nil {
 		t.Fatalf("New() = _, %v; want nil", err)
 	}

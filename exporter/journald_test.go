@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/v22/journal"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 	"github.com/sergeymakinen/postfix_exporter/v2/config"
 )
 
@@ -20,7 +20,7 @@ func TestExporter_Collect_Journald(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exporter, err := New(CollectorJournald, "postfix", "", "", "", cfg, log.NewNopLogger())
+	exporter, err := New(CollectorJournald, "postfix", "", "", "", cfg, promslog.NewNopLogger())
 	if err == ErrUnsupportedCollector {
 		t.Skip(err)
 	}
