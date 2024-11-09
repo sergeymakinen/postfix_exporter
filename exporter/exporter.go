@@ -4,12 +4,11 @@ package exporter
 import (
 	"errors"
 	"io"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sergeymakinen/postfix_exporter/v2/config"
 )
@@ -73,7 +72,7 @@ var (
 type Exporter struct {
 	collector io.Closer
 	instance  string
-	logger    log.Logger
+	logger    *slog.Logger
 	config    *config.Config
 
 	errors               prometheus.Counter
@@ -147,12 +146,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) scrape(r record, err error) {
 	if err != nil {
 		e.errors.Inc()
-		level.Debug(e.logger).Log("msg", "Error parsing log record", "err", err, "record", r)
+		e.logger.Debug("Error parsing log record", "record", r, "err", err)
 		return
 	}
 	if r.Program != e.instance {
 		e.foreign.Inc()
-		level.Debug(e.logger).Log("msg", "Foreign log record", "record", r)
+		e.logger.Debug("Foreign log record", "record", r)
 		return
 	}
 	e.logs.WithLabelValues(r.Subprogram, string(r.Severity)).Inc()
@@ -193,7 +192,7 @@ func (e *Exporter) scrape(r record, err error) {
 				e.statusReplies.WithLabelValues(r.Subprogram, matches[2], reply.Code, reply.EnhancedCode, text).Inc()
 			}
 		} else {
-			level.Warn(e.logger).Log("msg", "Error parsing host reply", "err", err, "record", r)
+			e.logger.Warn("Error parsing host reply", "record", r, "err", err)
 		}
 	}
 	found := true
@@ -289,7 +288,7 @@ func (e *Exporter) scrape(r record, err error) {
 						e.statusReplies.WithLabelValues(r.Subprogram, matches[2], reply.Code, reply.EnhancedCode, text).Inc()
 					}
 				} else {
-					level.Warn(e.logger).Log("msg", "Error parsing host reply", "err", err, "record", r)
+					e.logger.Warn("Error parsing host reply", "err", "record", r, err)
 				}
 			} else {
 				parseStatusReply(matches)
@@ -304,7 +303,7 @@ func (e *Exporter) scrape(r record, err error) {
 					e.smtpReplies.WithLabelValues(reply.Code, reply.EnhancedCode, text).Inc()
 				}
 			} else {
-				level.Warn(e.logger).Log("msg", "Error parsing host reply", "err", err, "record", r)
+				e.logger.Warn("Error parsing host reply", "record", r, "err", err)
 			}
 		} else {
 			found = false
@@ -337,11 +336,11 @@ func (e *Exporter) scrape(r record, err error) {
 		return
 	}
 	e.unsupported.Inc()
-	level.Debug(e.logger).Log("msg", "Unsupported log record", "record", r)
+	e.logger.Debug("Unsupported log record", "record", r)
 }
 
 // New returns an initialized exporter.
-func New(collectorType int, instance, logPath, journaldPath, journaldUnit string, config *config.Config, logger log.Logger) (*Exporter, error) {
+func New(collectorType int, instance, logPath, journaldPath, journaldUnit string, config *config.Config, logger *slog.Logger) (*Exporter, error) {
 	quantiles := map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}
 	e := &Exporter{
 		instance: instance,

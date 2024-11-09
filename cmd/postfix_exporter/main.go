@@ -5,11 +5,11 @@ import (
 	"os"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
@@ -29,15 +29,16 @@ func main() {
 		toolkitFlags = webflag.AddFlags(kingpin.CommandLine, ":9907")
 		metricsPath  = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promlogConfig)
-	kingpin.HelpFlag.Short('h')
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promslogConfig)
 	kingpin.Version(version.Print("postfix_exporter"))
+	kingpin.CommandLine.UsageWriter(os.Stdout)
+	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	logger := promlog.New(promlogConfig)
+	logger := promslog.New(promslogConfig)
 
-	level.Info(logger).Log("msg", "Starting postfix_exporter", "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "context", version.BuildContext())
+	logger.Info("Starting postfix_exporter", "version", version.Info())
+	logger.Info("Build context", "context", version.BuildContext())
 
 	var (
 		cfg *config.Config
@@ -46,43 +47,53 @@ func main() {
 	if *configFile != "" {
 		cfg, err = config.Load(*configFile)
 		if err != nil {
-			level.Error(logger).Log("msg", "Error loading config", "err", err)
+			logger.Error("Error loading config", "err", err)
 			os.Exit(1)
 		}
 		if *configCheck {
-			level.Info(logger).Log("msg", "Config file is ok, exiting...")
+			logger.Info("Config file is ok, exiting...")
 			return
 		}
-		level.Info(logger).Log("msg", "Loaded config file")
+		logger.Info("Loaded config file")
 	}
 
-	prometheus.MustRegister(version.NewCollector("postfix_exporter"))
+	prometheus.MustRegister(versioncollector.NewCollector("postfix_exporter"))
 	collectorType := exporter.CollectorFile
 	if *collector == "journald" {
 		collectorType = exporter.CollectorJournald
 	}
 	exporter, err := exporter.New(collectorType, *instance, *logPath, *journaldPath, *journaldUnit, cfg, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Error creating the exporter", "err", err)
+		logger.Error("Error creating the exporter", "err", err)
 		os.Exit(1)
 	}
 	defer exporter.Close()
 	prometheus.MustRegister(exporter)
 
 	http.Handle(*metricsPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-             <head><title>Postfix Exporter</title></head>
-             <body>
-             <h1>Postfix Exporter</h1>
-             <p><a href='` + *metricsPath + `'>Metrics</a></p>
-             </body>
-             </html>`))
-	})
+	if *metricsPath != "/" {
+		landingConfig := web.LandingConfig{
+			Name:        "Postfix Exporter",
+			Description: "Prometheus Exporter for Postfix",
+			Version:     version.Info(),
+			Links: []web.LandingLinks{
+				{
+					Address: *metricsPath,
+					Text:    "Metrics",
+				},
+			},
+		}
+		landingPage, err := web.NewLandingPage(landingConfig)
+		if err != nil {
+			logger.Error(err.Error())
+			os.Exit(1)
+		}
+		http.Handle("/", landingPage)
+	}
 
 	srv := &http.Server{}
 	if err := web.ListenAndServe(srv, toolkitFlags, logger); err != nil {
-		level.Error(logger).Log("msg", "Error running HTTP server", "err", err)
+		logger.Error("Error running HTTP server", "err", err)
 		os.Exit(1)
 	}
 }
