@@ -1,3 +1,5 @@
+version: 2
+
 builds:
   - main: ./cmd/postfix_exporter
     ldflags: |
@@ -49,6 +51,7 @@ builds:
     overrides:
       - goos: linux
         goarch: '386'
+        go386: sse2
         env:
           - CGO_ENABLED=1
           - CC=i686-linux-gnu-gcc
@@ -60,6 +63,7 @@ builds:
           - CC=x86_64-linux-gnu-gcc
       - goos: linux
         goarch: arm64
+        goarm64: v8.0
         env:
           - CGO_ENABLED=1
           - CC=aarch64-linux-gnu-gcc
@@ -107,11 +111,13 @@ builds:
           - CC=mipsel-linux-gnu-gcc
       - goos: linux
         goarch: ppc64le
+        goppc64: power8
         env:
           - CGO_ENABLED=1
           - CC=powerpc64le-linux-gnu-gcc
       - goos: linux
         goarch: riscv64
+        goriscv64: rva20u64
         env:
           - CGO_ENABLED=1
           - CC=riscv64-linux-gnu-gcc
