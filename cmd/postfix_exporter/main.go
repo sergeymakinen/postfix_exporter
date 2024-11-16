@@ -19,7 +19,7 @@ import (
 
 func main() {
 	var (
-		configFile   = kingpin.Flag("config.file", "Postfix exporter configuration file.").String()
+		configFile   = kingpin.Flag("config.file", "Postfix Exporter configuration file.").String()
 		configCheck  = kingpin.Flag("config.check", "If true validate the config file and then exit.").Default().Bool()
 		collector    = kingpin.Flag("collector", "Collector type to scrape metrics with. One of: [file, journald]").Default("file").Enum("file", "journald")
 		instance     = kingpin.Flag("postfix.instance", "Postfix instance name.").Default("postfix").String()
