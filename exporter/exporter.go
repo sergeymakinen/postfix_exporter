@@ -2,6 +2,7 @@
 package exporter
 
 import (
+	"cmp"
 	"errors"
 	"io"
 	"log/slog"
@@ -340,12 +341,12 @@ func (e *Exporter) scrape(r record, err error) {
 }
 
 // New returns an initialized exporter.
-func New(collectorType int, instance, logPath, journaldPath, journaldUnit string, config *config.Config, logger *slog.Logger) (*Exporter, error) {
+func New(collectorType int, instance, logPath, journaldPath, journaldUnit string, cfg *config.Config, logger *slog.Logger) (*Exporter, error) {
 	quantiles := map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}
 	e := &Exporter{
 		instance: instance,
 		logger:   logger,
-		config:   config,
+		config:   cmp.Or(cfg, &config.Config{}),
 
 		errors: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
