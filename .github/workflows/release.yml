@@ -54,11 +54,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USER: ${{ env.USER }}
           HOSTNAME: ${{ env.HOSTNAME }}
+      - name: Prepare artifacts for Docker
+        run: |
+          mkdir -p dist/docker
+          mv dist/postfix_exporter_linux_s390x dist/docker/postfix_exporter_linux_s390x
+          mv dist/postfix_exporter_linux_amd64_v1 dist/docker/postfix_exporter_linux_amd64
+          mv dist/postfix_exporter_linux_arm_7 dist/docker/postfix_exporter_linux_arm
+          mv dist/postfix_exporter_linux_arm64_v8.0 dist/docker/postfix_exporter_linux_arm64
+          mv dist/postfix_exporter_linux_ppc64le_power8 dist/docker/postfix_exporter_linux_ppc64le
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: dist
+          name: docker-dist
+          path: dist/docker
 
   docker:
     name: Docker
@@ -81,14 +89,8 @@ jobs:
       - name: Download binaries
         uses: actions/download-artifact@v4
         with:
-          name: dist
-          path: dist
-      - name: Link artifacts for Docker
-        run: |
-          ln -s postfix_exporter_linux_amd64_v1 dist/postfix_exporter_linux_amd64
-          ln -s postfix_exporter_linux_arm_7 dist/postfix_exporter_linux_arm
-          ln -s postfix_exporter_linux_arm64_v8.0 dist/postfix_exporter_linux_arm64
-          ln -s postfix_exporter_linux_ppc64le_power8 dist/postfix_exporter_linux_ppc64le
+          name: docker-dist
+          path: dist/docker
       - name: Set up Docker Build Metadata
         id: meta
         uses: docker/metadata-action@v5

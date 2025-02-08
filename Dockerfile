@@ -3,7 +3,7 @@ LABEL maintainer="Sergey Makinen <sergey@makinen.ru>"
 
 ARG TARGETOS
 ARG TARGETARCH
-COPY dist/postfix_exporter_${TARGETOS}_${TARGETARCH}/postfix_exporter /bin/postfix_exporter
+COPY dist/docker/postfix_exporter_${TARGETOS}_${TARGETARCH}/postfix_exporter /bin/postfix_exporter
 
 EXPOSE 9907
 USER nobody
