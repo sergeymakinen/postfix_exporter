@@ -1,9 +1,10 @@
 on:
   push:
   pull_request:
-name: tests
+name: Test
 jobs:
-  Test:
+  test:
+    name: Test
     strategy:
       fail-fast: false
       matrix:
