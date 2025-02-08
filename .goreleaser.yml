@@ -130,8 +130,7 @@ builds:
 archives:
   - format_overrides:
       - goos: windows
-        formats:
-          - zip
+        format: zip
 
 release:
   prerelease: auto
