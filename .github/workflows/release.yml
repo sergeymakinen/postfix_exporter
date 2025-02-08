@@ -53,6 +53,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USER: ${{ env.USER }}
           HOSTNAME: ${{ env.HOSTNAME }}
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            dist
+
+  Docker:
+    runs-on: ubuntu-latest
+    needs: GoReleaser
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install QEMU
         uses: docker/setup-qemu-action@v3
       - name: Install Docker Buildx
@@ -62,6 +77,11 @@ jobs:
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
       - name: Link artifacts for Docker
         run: |
           ln -s postfix_exporter_linux_amd64_v1 dist/postfix_exporter_linux_amd64
