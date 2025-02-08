@@ -4,6 +4,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/sergeymakinen/postfix_exporter.svg)](https://pkg.go.dev/github.com/sergeymakinen/postfix_exporter/v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sergeymakinen/postfix_exporter/v2)](https://goreportcard.com/report/github.com/sergeymakinen/postfix_exporter/v2)
 [![codecov](https://codecov.io/gh/sergeymakinen/postfix_exporter/branch/main/graph/badge.svg)](https://codecov.io/gh/sergeymakinen/postfix_exporter)
+[![Docker Pulls](https://img.shields.io/docker/pulls/sergeymakinen/postfix_exporter)](https://hub.docker.com/r/sergeymakinen/postfix_exporter)
 
 Export Postfix stats from logs to Prometheus.
 
@@ -12,6 +13,19 @@ To run it:
 ```bash
 make
 ./postfix_exporter [flags]
+```
+
+## Using Docker
+
+You can deploy this exporter using the [sergeymakinen/postfix_exporter](https://hub.docker.com/r/sergeymakinen/postfix_exporter) Docker image.
+
+For example:
+
+```bash
+docker pull sergeymakinen/postfix_exporter
+
+docker run -d -p 9907:9907 -v postfix_logs:/var/log/postfix sergeymakinen/postfix_exporter \
+  --file.log /var/log/postfix/postfix.log
 ```
 
 ## Exported metrics
