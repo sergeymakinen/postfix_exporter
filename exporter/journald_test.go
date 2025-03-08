@@ -3,6 +3,7 @@ package exporter
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -28,8 +29,8 @@ func TestExporter_Collect_Journald(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			exporter, err := New(CollectorJournald, "postfix", "", "", "", cfg, promslog.NewNopLogger())
-			if err == ErrUnsupportedCollector {
+			exporter, err := New(&Journald{}, "postfix", cfg, promslog.NewNopLogger())
+			if errors.Is(err, ErrUnsupportedCollector) {
 				t.Skip(err)
 			}
 			if err != nil {

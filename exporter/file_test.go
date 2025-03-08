@@ -63,7 +63,7 @@ func TestExporter_Collect_File(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			exporter, err := New(CollectorFile, "postfix", out.Name(), "", "", cfg, promslog.NewNopLogger())
+			exporter, err := New(&File{Path: out.Name()}, "postfix", cfg, promslog.NewNopLogger())
 			if err != nil {
 				t.Fatalf("New() = _, %v; want nil", err)
 			}

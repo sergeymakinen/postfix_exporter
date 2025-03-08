@@ -7,6 +7,17 @@ import (
 	"time"
 )
 
+// Collector provides records or errors from parsing Postfix logs.
+type Collector interface {
+	Collect(ch chan<- result) error
+	Close() error
+}
+
+type result struct {
+	rec record
+	err error
+}
+
 type severity string
 
 const (
