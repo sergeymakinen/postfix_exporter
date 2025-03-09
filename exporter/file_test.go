@@ -45,7 +45,7 @@ var tests = map[string]struct {
 	},
 }
 
-func TestExporter_Collect_File(t *testing.T) {
+func TestExporter_File_Collect(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			out, err := os.CreateTemp("", "")
@@ -98,5 +98,37 @@ func TestExporter_Collect_File(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestExporter_File_Test(t *testing.T) {
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			var (
+				cfg *config.Config
+				err error
+			)
+			if test.Cfg != "" {
+				cfg, err = config.Load(test.Cfg)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			collector := &File{
+				Path: "testdata/mail.log",
+				Test: true,
+			}
+			exporter, err := New(collector, "postfix", cfg, promslog.NewNopLogger())
+			if err != nil {
+				t.Fatalf("New() = _, %v; want nil", err)
+			}
+			collector.Wait()
+			b, err := os.ReadFile(test.Metrics)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := testutil.CollectAndCompare(exporter, bytes.NewReader(b), testMetrics...); err != nil {
+				t.Errorf("testutil.CollectAndCompare() = %v; want nil", err)
+			}
+		})
+	}
 }

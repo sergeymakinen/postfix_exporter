@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/nxadm/tail"
 )
@@ -13,10 +14,14 @@ type File struct {
 	Path string
 	Test bool
 
-	tail *tail.Tail
+	tail   *tail.Tail
+	closed bool
+	done   chan struct{}
+	wg     sync.WaitGroup
 }
 
 func (f *File) Collect(ch chan<- result) error {
+	f.done = make(chan struct{})
 	if f.Test {
 		return f.read(ch)
 	}
@@ -35,11 +40,22 @@ func (f *File) start(ch chan<- result) error {
 		return err
 	}
 	f.tail = t
+	f.wg.Add(1)
 	go func() {
-		for s := range f.tail.Lines {
-			var res result
-			res.rec, res.err = parseRecord(s.Text)
-			ch <- res
+		defer f.wg.Done()
+		for {
+			select {
+			case s := <-f.tail.Lines:
+				var res result
+				res.rec, res.err = parseRecord(s.Text)
+				select {
+				case ch <- res:
+				case <-f.done:
+					return
+				}
+			case <-f.done:
+				return
+			}
 		}
 	}()
 	return nil
@@ -50,23 +66,38 @@ func (f *File) read(ch chan<- result) error {
 	if err != nil {
 		return err
 	}
-	defer ff.Close()
-	scanner := bufio.NewScanner(ff)
-	for scanner.Scan() {
-		var res result
-		res.rec, res.err = parseRecord(scanner.Text())
-		ch <- res
-	}
-	if err := scanner.Err(); err != nil {
-		return err
-	}
+	f.wg.Add(1)
+	go func() {
+		defer f.wg.Done()
+		defer ff.Close()
+		scanner := bufio.NewScanner(ff)
+		for scanner.Scan() {
+			if f.closed {
+				return
+			}
+			var res result
+			res.rec, res.err = parseRecord(scanner.Text())
+			select {
+			case ch <- res:
+			case <-f.done:
+				return
+			}
+		}
+	}()
 	return nil
 }
 
+func (f *File) Wait() {
+	f.wg.Wait()
+}
+
 func (f *File) Close() error {
-	if f.tail == nil {
-		return nil
+	f.closed = true
+	close(f.done)
+	var err error
+	if f.tail != nil {
+		defer f.tail.Cleanup()
+		err = f.tail.Stop()
 	}
-	defer f.tail.Cleanup()
-	return f.tail.Stop()
+	return err
 }

@@ -1,7 +1,6 @@
 # Postfix Exporter
 
 [![tests](https://github.com/sergeymakinen/postfix_exporter/workflows/tests/badge.svg)](https://github.com/sergeymakinen/postfix_exporter/actions?query=workflow%3Atests)
-[![Go Reference](https://pkg.go.dev/badge/github.com/sergeymakinen/postfix_exporter.svg)](https://pkg.go.dev/github.com/sergeymakinen/postfix_exporter/v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sergeymakinen/postfix_exporter/v2)](https://goreportcard.com/report/github.com/sergeymakinen/postfix_exporter/v2)
 [![codecov](https://codecov.io/gh/sergeymakinen/postfix_exporter/branch/main/graph/badge.svg)](https://codecov.io/gh/sergeymakinen/postfix_exporter)
 [![Docker Pulls](https://img.shields.io/docker/pulls/sergeymakinen/postfix_exporter)](https://hub.docker.com/r/sergeymakinen/postfix_exporter)
@@ -64,6 +63,8 @@ docker run -d -p 9907:9907 -v postfix_logs:/var/log/postfix sergeymakinen/postfi
 * __`file.log`:__ Path to a file containing Postfix logs. Example: `/var/log/mail.log`.
 * __`journald.path`:__ Path where a systemd journal residing in. A local journal is being used by default.
 * __`journald.unit`:__ Postfix systemd service name. `postfix@-.service` by default.
+* __`journald.since`:__ Time since which to read from a systemd journal. Now by default.
+* __`test`:__ If true, read logs, print metrics and then exit.
 * __`web.listen-address`:__ Address to listen on for web interface and telemetry.
 * __`web.telemetry-path`:__ Path under which to expose metrics.
 * __`log.level`:__ Logging level. `info` by default.

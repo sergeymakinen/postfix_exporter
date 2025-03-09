@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/go-systemd/v22/sdjournal"
@@ -19,11 +20,14 @@ type Journald struct {
 	Since time.Duration
 	Test  bool
 
-	r    *sdjournal.JournalReader
-	done chan time.Time
+	r      *sdjournal.JournalReader
+	closed bool
+	done   chan time.Time
+	wg     sync.WaitGroup
 }
 
 func (j *Journald) Collect(ch chan<- result) error {
+	j.done = make(chan time.Time)
 	if j.Test {
 		return j.read(ch)
 	}
@@ -38,8 +42,12 @@ func (j *Journald) open() (*sdjournal.JournalReader, error) {
 			Value: j.Unit,
 		})
 	}
+	d := cmp.Or(j.Since, -1)
+	if d > 0 {
+		d = -d
+	}
 	return sdjournal.NewJournalReader(sdjournal.JournalReaderConfig{
-		Since:     cmp.Or(j.Since, -1),
+		Since:     d,
 		Matches:   m,
 		Path:      j.Path,
 		Formatter: formatJournald,
@@ -47,18 +55,25 @@ func (j *Journald) open() (*sdjournal.JournalReader, error) {
 }
 
 func (j *Journald) start(ch chan<- result) error {
-	r, err := j.open()
+	var err error
+	j.r, err = j.open()
 	if err != nil {
 		return err
 	}
-	j.r = r
-	j.done = make(chan time.Time)
-	go j.r.Follow(j.done, writerFunc(func(p []byte) (n int, err error) {
-		var res result
-		res.rec, res.err = parseRecord(string(p))
-		ch <- res
-		return len(p), nil
-	}))
+	j.wg.Add(1)
+	go func() {
+		defer j.wg.Done()
+		j.r.Follow(j.done, writerFunc(func(p []byte) (n int, err error) {
+			var res result
+			res.rec, res.err = parseRecord(string(p))
+			select {
+			case ch <- res:
+			case <-j.done:
+				return
+			}
+			return len(p), nil
+		}))
+	}()
 	return nil
 }
 
@@ -67,32 +82,48 @@ func (j *Journald) read(ch chan<- result) error {
 	if err != nil {
 		return err
 	}
-	defer r.Close()
-	buf := make([]byte, 64<<10)
-	for {
-		n, err := r.Read(buf)
-		if err == io.EOF {
-			break
+	j.wg.Add(1)
+	go func() {
+		defer j.wg.Done()
+		defer r.Close()
+		buf := make([]byte, 64<<10)
+		for {
+			if j.closed {
+				return
+			}
+			n, err := r.Read(buf)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return
+			}
+			if n > 0 {
+				var res result
+				res.rec, res.err = parseRecord(string(buf[:n]))
+				select {
+				case ch <- res:
+				case <-j.done:
+					return
+				}
+			}
 		}
-		if err != nil {
-			return err
-		}
-		if n > 0 {
-			var res result
-			res.rec, res.err = parseRecord(string(buf[:n]))
-			ch <- res
-		}
-	}
+	}()
 	return nil
 }
 
+func (j *Journald) Wait() {
+	j.wg.Wait()
+}
+
 func (j *Journald) Close() error {
-	if j.r == nil {
-		return nil
-	}
-	j.done <- time.Now()
+	j.closed = true
 	close(j.done)
-	return j.r.Close()
+	var err error
+	if j.r != nil {
+		err = j.r.Close()
+	}
+	return err
 }
 
 type writerFunc func(p []byte) (n int, err error)

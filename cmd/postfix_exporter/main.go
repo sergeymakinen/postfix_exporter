@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
 	"os"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
@@ -26,8 +28,8 @@ func main() {
 		logPath       = kingpin.Flag("file.log", "Path to a file containing Postfix logs.").Default("/var/log/mail.log").String()
 		journaldPath  = kingpin.Flag("journald.path", "Path where a systemd journal residing in.").Default("").String()
 		journaldUnit  = kingpin.Flag("journald.unit", "Postfix systemd service name.").Default("postfix@-.service").String()
-		journaldSince = kingpin.Flag("journald.since", "Time since to read from a systemd journal.").Default("0s").Duration()
-		test          = kingpin.Flag("test", "If true, read logs, print metrics and exit.").Default("false").Bool()
+		journaldSince = kingpin.Flag("journald.since", "Time since which to read from a systemd journal.").Default("0s").Duration()
+		test          = kingpin.Flag("test", "If true, read logs, print metrics and then exit.").Default("false").Bool()
 		toolkitFlags  = webflag.AddFlags(kingpin.CommandLine, ":9907")
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
@@ -82,6 +84,24 @@ func main() {
 	}
 	defer exporter.Close()
 	prometheus.MustRegister(exporter)
+	if *test {
+		collector.Wait()
+		mfs, err := prometheus.DefaultGatherer.Gather()
+		if err != nil {
+			logger.Error("Error collecting metrics", "err", err)
+			os.Exit(1)
+		}
+		var buf bytes.Buffer
+		enc := expfmt.NewEncoder(&buf, expfmt.NewFormat(expfmt.TypeTextPlain))
+		for _, mf := range mfs {
+			if err := enc.Encode(mf); err != nil {
+				logger.Error("Error collecting metrics", "err", err)
+				os.Exit(1)
+			}
+		}
+		os.Stdout.Write(buf.Bytes())
+		return
+	}
 
 	http.Handle(*metricsPath, promhttp.Handler())
 	if *metricsPath != "/" {
