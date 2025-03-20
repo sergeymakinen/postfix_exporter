@@ -26,8 +26,8 @@ postfix_delay_seconds_count{status="sent",subprogram="lmtp"} 1
 postfix_delay_seconds{status="sent",subprogram="smtp",quantile="0.5"} 0.12
 postfix_delay_seconds{status="sent",subprogram="smtp",quantile="0.9"} 0.12
 postfix_delay_seconds{status="sent",subprogram="smtp",quantile="0.99"} 0.12
-postfix_delay_seconds_sum{status="sent",subprogram="smtp"} 0.12
-postfix_delay_seconds_count{status="sent",subprogram="smtp"} 1
+postfix_delay_seconds_sum{status="sent",subprogram="smtp"} 0.24
+postfix_delay_seconds_count{status="sent",subprogram="smtp"} 2
 # HELP postfix_disconnects_total Total number of times disconnect events were collected.
 # TYPE postfix_disconnects_total counter
 postfix_disconnects_total{subprogram="smtpd"} 1
@@ -41,7 +41,7 @@ postfix_logs_total{severity="info",subprogram="cleanup"} 2
 postfix_logs_total{severity="info",subprogram="lmtp"} 3
 postfix_logs_total{severity="info",subprogram="postscreen"} 22
 postfix_logs_total{severity="info",subprogram="qmgr"} 2
-postfix_logs_total{severity="info",subprogram="smtp"} 8
+postfix_logs_total{severity="info",subprogram="smtp"} 9
 postfix_logs_total{severity="info",subprogram="smtpd"} 9
 postfix_logs_total{severity="info",subprogram="unknown"} 1
 postfix_logs_total{severity="warning",subprogram="smtpd"} 2
@@ -88,7 +88,7 @@ postfix_statuses_total{status="bounced",subprogram="lmtp"} 1
 postfix_statuses_total{status="bounced",subprogram="smtp"} 1
 postfix_statuses_total{status="deferred",subprogram="smtp"} 2
 postfix_statuses_total{status="sent",subprogram="lmtp"} 1
-postfix_statuses_total{status="sent",subprogram="smtp"} 1
+postfix_statuses_total{status="sent",subprogram="smtp"} 2
 # HELP postfix_unsupported_total Total number of unsupported log records.
 # TYPE postfix_unsupported_total counter
 postfix_unsupported_total 8

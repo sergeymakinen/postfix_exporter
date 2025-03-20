@@ -64,7 +64,7 @@ var (
 
 	hostSaidPart      = `host ` + hostnameWithIPAddrPart + ` said: (.+) \(in reply to \w+[\w /-]*\)`
 	reHostSaid        = regexp.MustCompile(hostSaidPart)
-	reHostReplyStatus = regexp.MustCompile(`^(\d{3})(.{1,3}(\d\.\d\.\d)|[^ ]+) (.+)$`)
+	reHostReplyStatus = regexp.MustCompile(`^(\d{3})(.{1,3}(\d\.\d\.\d)|[^ ]+|) (.+)$`)
 	reSmtpHostSaid    = regexp.MustCompile(`^\w+: ` + hostSaidPart + `$`)
 )
 

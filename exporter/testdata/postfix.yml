@@ -11,6 +11,9 @@ status_replies:
     text: sent
   - regexp: (?i)spf|dkim|dns
     text: local_conf_problem
+  - regexp: OK queued as .+
+    match: text
+    text: ok
   - not_statuses:
       - bounced
     regexp: (.+)
