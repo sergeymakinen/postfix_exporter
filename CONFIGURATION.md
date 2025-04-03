@@ -24,6 +24,8 @@ noqueue_reject_replies:
 
 ### `<status_reply>`
 
+The status replies are from `smtp` log entries of server replies having Postfix statuses.
+
 Example log entry:
 
 ```
@@ -33,7 +35,7 @@ Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: to=<user@example.com>,
 In this case:
 
 * `123` is a status code
-* `1.2.3` is an enhanced status code
+* `1.2.3` is an enhanced status code (might be empty if absent)
 * `Reasons` is the text of the reply
 
 ```yml
@@ -57,6 +59,8 @@ text: <string>
 
 ### `<smtp_reply>`
 
+The SMTP replies are like status replies but without Postfix statuses.
+
 Example log entry:
 
 ```
@@ -66,7 +70,7 @@ Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: host example.com[123.4
 In this case:
 
 * `123` is a status code
-* `1.2.3` is an enhanced status code
+* `1.2.3` is an enhanced status code (might be empty if absent)
 * `Reasons` is the text of the reply
 
 ```yml
@@ -82,6 +86,8 @@ text: <string>
 
 ### `<noqueue_reject_reply>`
 
+The NOQUEUE reject replies are from log entries of Postfix replies because of rejected messages.
+
 Example log entry:
 
 ```
@@ -91,7 +97,7 @@ Jan 1 00:00:00 hostname postfix/smtpd[12345]: NOQUEUE: reject: RCPT from example
 In this case:
 
 * `123` is a status code
-* `1.2.3` is an enhanced status code
+* `1.2.3` is an enhanced status code (might be empty if absent)
 * `Reasons` is the text of the reply
 
 ```yml

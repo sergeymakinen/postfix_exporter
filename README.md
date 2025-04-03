@@ -1,6 +1,6 @@
 # Postfix Exporter
 
-[![tests](https://github.com/sergeymakinen/postfix_exporter/workflows/tests/badge.svg)](https://github.com/sergeymakinen/postfix_exporter/actions?query=workflow%3Atests)
+[![Test](https://github.com/sergeymakinen/postfix_exporter/actions/workflows/test.yml/badge.svg)](https://github.com/sergeymakinen/postfix_exporter/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sergeymakinen/postfix_exporter/v2)](https://goreportcard.com/report/github.com/sergeymakinen/postfix_exporter/v2)
 [![codecov](https://codecov.io/gh/sergeymakinen/postfix_exporter/branch/main/graph/badge.svg)](https://codecov.io/gh/sergeymakinen/postfix_exporter)
 [![Docker Pulls](https://img.shields.io/docker/pulls/sergeymakinen/postfix_exporter)](https://hub.docker.com/r/sergeymakinen/postfix_exporter)
