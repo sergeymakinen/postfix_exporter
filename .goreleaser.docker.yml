@@ -1,0 +1,19 @@
+version: 2
+
+builds:
+  - main: ./cmd/postfix_exporter
+    ldflags: |
+      -s
+      -X github.com/prometheus/common/version.Version={{.Version}}
+      -X github.com/prometheus/common/version.Revision={{.FullCommit}}
+      -X github.com/prometheus/common/version.Branch={{.Branch}}
+      -X github.com/prometheus/common/version.BuildUser={{.Env.USER}}@{{.Env.HOSTNAME}}
+      -X github.com/prometheus/common/version.BuildDate={{time "20060102-15:04:05"}}
+    tags:
+      - netgo
+    targets:
+      - linux_amd64
+      - linux_arm64
+      - linux_arm_7
+      - linux_ppc64le
+      - linux_s390x
