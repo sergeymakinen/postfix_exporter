@@ -13,11 +13,12 @@ jobs:
         run: |
           apt-get update
           apt-get install -y git
+      - name: 'Workaround: mark every directory as safe for Git'
+        run: git config --global --add safe.directory '*'
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          set-safe-directory: ${{ github.workspace }}
       - name: Install Go
         uses: actions/setup-go@v5
         with:
