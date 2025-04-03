@@ -4,20 +4,14 @@ package exporter
 import (
 	"cmp"
 	"errors"
-	"io"
 	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sergeymakinen/postfix_exporter/v2/config"
-)
-
-// Collector types.
-const (
-	CollectorFile = iota
-	CollectorJournald
 )
 
 const namespace = "postfix"
@@ -71,7 +65,10 @@ var (
 // Exporter collects Postfix stats from logs and exports them
 // using the prometheus metrics package.
 type Exporter struct {
-	collector io.Closer
+	ch        chan result
+	done      chan struct{}
+	collector Collector
+	wg        sync.WaitGroup
 	instance  string
 	logger    *slog.Logger
 	config    *config.Config
@@ -97,7 +94,10 @@ type Exporter struct {
 
 // Close stops collecting new logs.
 func (e *Exporter) Close() error {
-	return e.collector.Close()
+	err := e.collector.Close()
+	close(e.done)
+	e.wg.Wait()
+	return err
 }
 
 // Describe describes all the metrics exported by the Postfix exporter. It
@@ -144,7 +144,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.noqueueRejectReplies.Collect(ch)
 }
 
-func (e *Exporter) scrape(r record, err error) {
+func (e *Exporter) process(r record, err error) {
 	if err != nil {
 		e.errors.Inc()
 		e.logger.Debug("Error parsing log record", "record", r, "err", err)
@@ -341,12 +341,15 @@ func (e *Exporter) scrape(r record, err error) {
 }
 
 // New returns an initialized exporter.
-func New(collectorType int, instance, logPath, journaldPath, journaldUnit string, cfg *config.Config, logger *slog.Logger) (*Exporter, error) {
+func New(collector Collector, instance string, cfg *config.Config, logger *slog.Logger) (*Exporter, error) {
 	quantiles := map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}
 	e := &Exporter{
-		instance: instance,
-		logger:   logger,
-		config:   cmp.Or(cfg, &config.Config{}),
+		ch:        make(chan result),
+		done:      make(chan struct{}),
+		collector: collector,
+		instance:  instance,
+		logger:    logger,
+		config:    cmp.Or(cfg, &config.Config{}),
 
 		errors: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
@@ -435,18 +438,21 @@ func New(collectorType int, instance, logPath, journaldPath, journaldUnit string
 			Help:      "Total number of times NOQUEUE: reject event replies were collected.",
 		}, []string{"subprogram", "command", "code", "enhanced_code", "text"}),
 	}
-	var err error
-	switch collectorType {
-	case CollectorFile:
-		e.collector, err = collectFromFile(logPath, e.scrape)
-	case CollectorJournald:
-		e.collector, err = collectFromJournald(journaldPath, journaldUnit, e.scrape)
-	default:
-		err = errors.New("unknown collector type " + strconv.Itoa(collectorType))
-	}
-	if err != nil {
+	if err := e.collector.Collect(e.ch); err != nil {
 		return nil, err
 	}
+	e.wg.Add(1)
+	go func() {
+		defer e.wg.Done()
+		for {
+			select {
+			case res := <-e.ch:
+				e.process(res.rec, res.err)
+			case <-e.done:
+				return
+			}
+		}
+	}()
 	return e, nil
 }
 
