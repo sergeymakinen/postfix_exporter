@@ -13,12 +13,11 @@ jobs:
         run: |
           apt-get update
           apt-get install -y git
-      - name: 'Workaround: mark every directory as safe for Git'
-        run: git config --global --add safe.directory '*'
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          set-safe-directory: ${{ github.workspace }}
       - name: Install Go
         uses: actions/setup-go@v5
         with:
@@ -48,7 +47,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: v2.5.1
+          version: latest
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -91,6 +90,8 @@ jobs:
         with:
           name: docker-dist
           path: dist/docker
+      - name: Make binaries executable
+        run: find dist/docker -type f -name postfix_exporter -exec chmod +x {} \;
       - name: Set up Docker Build Metadata
         id: meta
         uses: docker/metadata-action@v5
