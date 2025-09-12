@@ -16,7 +16,7 @@ jobs:
       - name: 'Workaround: mark every directory as safe for Git'
         run: git config --global --add safe.directory '*'
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Install Go
@@ -84,7 +84,7 @@ jobs:
     needs: goreleaser
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Install QEMU
