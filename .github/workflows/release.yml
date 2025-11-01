@@ -47,7 +47,7 @@ jobs:
           mv dist/postfix_exporter_linux_arm64_v8.0 dist/docker/postfix_exporter_linux_arm64
           mv dist/postfix_exporter_linux_ppc64le_power8 dist/docker/postfix_exporter_linux_ppc64le
       - name: Upload binaries for Docker
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: docker-dist
           path: dist/docker
