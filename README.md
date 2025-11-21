@@ -77,3 +77,13 @@ The postfix_exporter supports TLS and basic authentication.
 To use TLS and/or basic authentication, you need to pass a configuration file
 using the `--web.config.file` parameter. The format of the file is described
 [in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
+
+### Testing postfix_exporter on your system
+
+The metrics are computed from the logs, with a time range that goes from the time postfix_exporter is run up to the time where postfix_exporter metrics path is called.  
+In order to test postfix_exporter regex rulesets on earlier logs, postfix_exporter can be run with with `--test` flag.  
+Please bear in mind that when using journald as log source, you'll have to specify a minimum journald parsing range, like the last 24h.  
+Example:
+```
+postfix_exporter --config.check --collector journald --journald.unit postfix.service --journald.since 24h --test
+```
