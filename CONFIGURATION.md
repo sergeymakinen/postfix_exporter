@@ -18,6 +18,8 @@ status_replies:
   [ - <status_reply>, ... ]
 smtp_replies:
   [ - <smtp_reply>, ... ]
+lmtp_replies:
+  [ - <lmtp_reply>, ... ]
 noqueue_reject_replies:
   [ - <noqueue_reject_reply>, ... ]
 ```
@@ -71,6 +73,33 @@ In this case:
 
 * `123` is a status code
 * `1.2.3` is an enhanced status code (might be empty if absent)
+* `Reasons` is the text of the reply
+
+```yml
+# The regular expression matching the reply code, enhanced code or text.
+regexp: <regex>
+
+# Match type. Accepted values: code, enhanced_code, text.
+[ match: <string> | default = "text" ]
+
+# The replacement text (may include placeholders supported by Go, see https://pkg.go.dev/regexp#Regexp.Expand).
+text: <string>
+```
+
+### `<lmtp_reply>`
+
+The LMTP replies are like status replies but without Postfix statuses.
+
+Example log entry:
+
+```
+Jan 1 00:00:00 hostname postfix/lmtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[/var/run/dovecot/lmtp], delay=1.23, delays=1.23/1.23/1.23/1.23, dsn=1.2.3, status=deferred (host example.com[/var/run/dovecot/lmtp] said: 452 4.2.2 Reasons (in reply to end of DATA command))
+```
+
+In this case:
+
+* `452` is a status code
+* `4.2.2` is an enhanced status code (might be empty if absent)
 * `Reasons` is the text of the reply
 
 ```yml

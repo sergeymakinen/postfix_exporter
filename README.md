@@ -44,6 +44,7 @@ docker run -d -p 9907:9907 -v postfix_logs:/var/log/postfix sergeymakinen/postfi
 | postfix_delay_seconds | Delay in seconds for a server to process a message. | subprogram, status
 | postfix_status_replies_total | Total number of times server message status change event replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | subprogram, status, code, enhanced_code, text
 | postfix_smtp_replies_total | Total number of times SMTP server replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | code, enhanced_code, text
+| postfix_lmtp_replies_total | Total number of times LMTP server replies were collected. Requires [configuration](CONFIGURATION.md) to be present. | code, enhanced_code, text
 | postfix_milter_actions_total | Total number of times milter events were collected. | subprogram, action
 | postfix_login_failures_total | Total number of times login failure events were collected. | subprogram, method
 | postfix_qmgr_statuses_total | Total number of times Postfix queue manager message status change events were collected. | status
@@ -80,9 +81,9 @@ using the `--web.config.file` parameter. The format of the file is described
 
 ### Testing postfix_exporter on your system
 
-The metrics are computed from the logs, with a time range that goes from the time postfix_exporter is run up to the time where postfix_exporter metrics path is called.  
-In order to test postfix_exporter regex rulesets on earlier logs, postfix_exporter can be run with with `--test` flag.  
-Please bear in mind that when using journald as log source, you'll have to specify a minimum journald parsing range, like the last 24h.  
+The metrics are computed from the logs, with a time range that goes from the time postfix_exporter is run up to the time where postfix_exporter metrics path is called.
+In order to test postfix_exporter regex rulesets on earlier logs, postfix_exporter can be run with with `--test` flag.
+Please bear in mind that when using journald as log source, you'll have to specify a minimum journald parsing range, like the last 24h.
 Example:
 ```
 postfix_exporter --config.check --collector journald --journald.unit postfix.service --journald.since 24h --test
