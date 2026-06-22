@@ -37,7 +37,7 @@ jobs:
           echo "USER=$(whoami)" >> $GITHUB_ENV
           echo "HOSTNAME=$(hostname)" >> $GITHUB_ENV
       - name: Run GoReleaser for Docker
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: latest
@@ -76,7 +76,7 @@ jobs:
             gcc-x86-64-linux-gnu \
             libsystemd-dev
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: latest
