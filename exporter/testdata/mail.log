@@ -47,6 +47,7 @@ Jan 1 00:00:00 hostname postfix/smtpd[12345]: Unsupported
 # lmtp
 Jan 1 00:00:00 hostname postfix/lmtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[path], delay=0.12, delays=0.12/0.12/0.12/0.12, dsn=1.2.3, status=sent (250 2.0.0 Ok: queued as aaaaaaaaaaaaa)
 2023-02-01T01:02:04.123456+00:00 hostname postfix/lmtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[123.45.67.89]:25, delay=1.23, delays=1.23/1.23/1.23/1.23, dsn=1.2.3, status=bounced (123 #1.2.3 Reasons)
+2023-02-01T01:02:04.123456+00:00 hostname postfix/lmtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[/var/run/dovecot/lmtp], delay=1.23, delays=1.23/1.23/1.23/1.23, dsn=1.2.3, status=deferred (host example.com[/var/run/dovecot/lmtp] said: 452 4.2.2 <user@example.com> Quota exceeded (mailbox for user is full) (in reply to end of DATA command))
 Jan 1 00:00:00 hostname postfix/lmtp[12345]: Unsupported
 # smtp
 Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: to=<user@example.com>, relay=example.com[123.45.67.89]:123, delay=0.12, delays=0.12/0.12/0.12/0.12, dsn=1.2.3, status=sent (250 2.0.0 Ok: queued as aaaaaaaaaaaaa)

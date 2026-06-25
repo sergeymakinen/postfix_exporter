@@ -21,6 +21,9 @@ status_replies:
 smtp_replies:
   - regexp: (?i)gr(a|e)ylist
     text: graylist
+lmtp_replies:
+  - regexp: (?i)Quota exceeded
+    text: quota_exceeded
 noqueue_reject_replies:
   - regexp: '(Client host rejected: cannot find your hostname|Recipient address rejected: Rejected by SPF)'
     text: $1

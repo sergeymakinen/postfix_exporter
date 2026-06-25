@@ -12,6 +12,7 @@ import (
 type Config struct {
 	StatusReplies        []StatusReplyMatchConfig `yaml:"status_replies,omitempty"`
 	SmtpReplies          []ReplyMatchConfig       `yaml:"smtp_replies,omitempty"`
+	LmtpReplies          []ReplyMatchConfig       `yaml:"lmtp_replies,omitempty"`
 	NoqueueRejectReplies []ReplyMatchConfig       `yaml:"noqueue_reject_replies,omitempty"`
 }
 

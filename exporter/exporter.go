@@ -21,7 +21,7 @@ const namespace = "postfix"
 var ErrUnsupportedCollector = errors.New("unsupported collector")
 
 var (
-	ipAddrPart = `[a-f0-9:.]+`
+	ipAddrPart = `[a-z0-9:./]+`
 
 	psIPAddrPart       = `\[` + ipAddrPart + `]`
 	rePsConnect        = regexp.MustCompile(`^CONNECT from ` + psIPAddrPart)
@@ -85,6 +85,7 @@ type Exporter struct {
 	delays               *prometheus.SummaryVec
 	statusReplies        *prometheus.CounterVec
 	smtpReplies          *prometheus.CounterVec
+	lmtpReplies          *prometheus.CounterVec
 	milter               *prometheus.CounterVec
 	loginFailed          *prometheus.CounterVec
 	qmgrStatuses         *prometheus.CounterVec
@@ -115,6 +116,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.delays.Describe(ch)
 	e.statusReplies.Describe(ch)
 	e.smtpReplies.Describe(ch)
+	e.lmtpReplies.Describe(ch)
 	e.milter.Describe(ch)
 	e.loginFailed.Describe(ch)
 	e.qmgrStatuses.Describe(ch)
@@ -137,6 +139,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.delays.Collect(ch)
 	e.statusReplies.Collect(ch)
 	e.smtpReplies.Collect(ch)
+	e.lmtpReplies.Collect(ch)
 	e.milter.Collect(ch)
 	e.loginFailed.Collect(ch)
 	e.qmgrStatuses.Collect(ch)
@@ -314,7 +317,21 @@ func (e *Exporter) process(r record, err error) {
 			e.statuses.WithLabelValues(r.Subprogram, matches[2]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
 			e.delays.WithLabelValues(r.Subprogram, matches[2]).Observe(f)
-			parseStatusReply(matches)
+			if m := reHostSaid.FindStringSubmatch(matches[3]); m != nil {
+				reply, err := parseHostReply(m[1])
+				if err == nil {
+					if cfg, m := findSubmatch(e.config.LmtpReplies, func(cfg config.ReplyMatchConfig) []int {
+						return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
+					}); m != nil {
+						text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
+						e.lmtpReplies.WithLabelValues(reply.Code, reply.EnhancedCode, text).Inc()
+					}
+				} else {
+					e.logger.Warn("Error parsing host reply", "record", r, "err", err)
+				}
+			} else {
+				parseStatusReply(matches)
+			}
 		} else {
 			found = false
 		}
@@ -411,6 +428,11 @@ func New(collector Collector, instance string, cfg *config.Config, logger *slog.
 			Namespace: namespace,
 			Name:      "smtp_replies_total",
 			Help:      "Total number of times SMTP server replies were collected.",
+		}, []string{"code", "enhanced_code", "text"}),
+		lmtpReplies: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "lmtp_replies_total",
+			Help:      "Total number of times LMTP server replies were collected.",
 		}, []string{"code", "enhanced_code", "text"}),
 		milter: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,

@@ -13,6 +13,11 @@ postfix_delay_seconds{status="bounced",subprogram="smtp",quantile="0.9"} 1.23
 postfix_delay_seconds{status="bounced",subprogram="smtp",quantile="0.99"} 1.23
 postfix_delay_seconds_sum{status="bounced",subprogram="smtp"} 1.23
 postfix_delay_seconds_count{status="bounced",subprogram="smtp"} 1
+postfix_delay_seconds{status="deferred",subprogram="lmtp",quantile="0.5"} 1.23
+postfix_delay_seconds{status="deferred",subprogram="lmtp",quantile="0.9"} 1.23
+postfix_delay_seconds{status="deferred",subprogram="lmtp",quantile="0.99"} 1.23
+postfix_delay_seconds_sum{status="deferred",subprogram="lmtp"} 1.23
+postfix_delay_seconds_count{status="deferred",subprogram="lmtp"} 1
 postfix_delay_seconds{status="deferred",subprogram="smtp",quantile="0.5"} 2
 postfix_delay_seconds{status="deferred",subprogram="smtp",quantile="0.9"} 2
 postfix_delay_seconds{status="deferred",subprogram="smtp",quantile="0.99"} 2
@@ -38,7 +43,7 @@ postfix_login_failures_total{method="LOGIN",subprogram="smtpd"} 1
 # TYPE postfix_logs_total counter
 postfix_logs_total{severity="error",subprogram="postscreen"} 1
 postfix_logs_total{severity="info",subprogram="cleanup"} 2
-postfix_logs_total{severity="info",subprogram="lmtp"} 3
+postfix_logs_total{severity="info",subprogram="lmtp"} 4
 postfix_logs_total{severity="info",subprogram="postscreen"} 22
 postfix_logs_total{severity="info",subprogram="qmgr"} 2
 postfix_logs_total{severity="info",subprogram="smtp"} 9
@@ -102,6 +107,7 @@ postfix_status_replies_total{code="250",enhanced_code="",status="sent",subprogra
 postfix_statuses_total{status="bounced",subprogram="lmtp"} 1
 postfix_statuses_total{status="bounced",subprogram="smtp"} 1
 postfix_statuses_total{status="deferred",subprogram="smtp"} 2
+postfix_statuses_total{status="deferred",subprogram="lmtp"} 1
 postfix_statuses_total{status="sent",subprogram="lmtp"} 1
 postfix_statuses_total{status="sent",subprogram="smtp"} 2
 # HELP postfix_unsupported_total Total number of unsupported log records.
