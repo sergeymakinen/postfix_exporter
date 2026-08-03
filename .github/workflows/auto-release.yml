@@ -10,7 +10,7 @@ name: Auto Release
 jobs:
   auto_release:
     name: Auto Release
-    uses: sergeymakinen/.github/.github/workflows/auto-release.yml@main
+    uses: sergeymakinen/ci/.github/workflows/auto-release.yml@main
     secrets: inherit
   release:
     name: Release

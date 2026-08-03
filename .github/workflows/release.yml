@@ -11,41 +11,22 @@ permissions:
   packages: write
 name: Release
 jobs:
-  goreleaser:
-    name: GoReleaser
+  release:
+    name: Release
     runs-on: ubuntu-latest
-    container: debian:oldstable
+    container: ghcr.io/sergeymakinen/ci:debian
     steps:
-      - name: Install git
-        run: |
-          apt-get update
-          apt-get install -y git
-      - name: 'Workaround: mark every directory as safe for Git'
-        run: git config --global --add safe.directory '*'
-      - name: Checkout code
-        uses: actions/checkout@v7
+      - name: Prepare
+        uses: sergeymakinen/ci/release@main
         with:
-          ref: '${{ inputs.tag }}'
-          fetch-depth: 0
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 1.x
-          check-latest: true
-      - name: Set build info
-        run: |
-          echo "USER=$(whoami)" >> $GITHUB_ENV
-          echo "HOSTNAME=$(hostname)" >> $GITHUB_ENV
-      - name: Run GoReleaser for Docker
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          distribution: goreleaser
-          version: latest
-          args: build -f .goreleaser.docker.yml --clean
+          tag: ${{ inputs.tag }}
+          install-only: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USER: ${{ env.USER }}
-          HOSTNAME: ${{ env.HOSTNAME }}
+      - name: Run GoReleaser for Docker
+        run: goreleaser build -f .goreleaser.docker.yml --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Prepare artifacts for Docker
         run: |
           mkdir -p dist/docker
@@ -76,20 +57,14 @@ jobs:
             gcc-x86-64-linux-gnu \
             libsystemd-dev
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
+        run: goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USER: ${{ env.USER }}
-          HOSTNAME: ${{ env.HOSTNAME }}
 
   docker:
     name: Docker
     runs-on: ubuntu-latest
-    needs: goreleaser
+    needs: release
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
