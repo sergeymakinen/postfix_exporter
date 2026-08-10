@@ -26,7 +26,7 @@ jobs:
       - name: Install cgo dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsystemd-dev
+          sudo apt-get install --no-install-recommends -y libsystemd-dev
       - name: Test
         run: go test -coverprofile=coverage.txt -covermode=atomic ./...
       - name: Upload coverage to Codecov

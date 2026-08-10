@@ -42,7 +42,8 @@ jobs:
           path: dist/docker
       - name: Install cgo dependencies
         run: |
-          apt-get install -y \
+          apt-get update
+          apt-get install --no-install-recommends -y \
             build-essential \
             gcc-aarch64-linux-gnu \
             gcc-arm-linux-gnueabi \
