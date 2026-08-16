@@ -43,7 +43,7 @@ jobs:
       - name: Install cgo dependencies
         run: |
           apt-get update
-          apt-get install --no-install-recommends -y \
+          apt-get install -y \
             build-essential \
             gcc-aarch64-linux-gnu \
             gcc-arm-linux-gnueabi \
