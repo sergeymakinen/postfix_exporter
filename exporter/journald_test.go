@@ -30,7 +30,7 @@ func TestExporter_Journald_Collect(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			exporter, err := New(&Journald{}, "postfix", cfg, promslog.NewNopLogger())
+			exporter, err := New(&Journald{}, "postfix", cfg, promslog.New(&promslog.Config{}))
 			if errors.Is(err, ErrUnsupportedCollector) {
 				t.Skip(err)
 			}
@@ -99,7 +99,7 @@ func TestExporter_Journald_Test_Simple(t *testing.T) {
 				Since: time.Duration(-1) * time.Hour,
 				Test:  true,
 			}
-			exporter, err := New(collector, "postfix", cfg, promslog.NewNopLogger())
+			exporter, err := New(collector, "postfix", cfg, promslog.New(&promslog.Config{}))
 			if errors.Is(err, ErrUnsupportedCollector) {
 				t.Skip(err)
 			}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -159,38 +160,21 @@ func (e *Exporter) process(r record, err error) {
 	}
 	e.logs.WithLabelValues(r.Subprogram, string(r.Severity)).Inc()
 	parseStatusReply := func(matches []string) {
-		reply := parseHostReply(matches[4], matches[2])
-		match := func(typ config.MatchType) string {
-			switch typ {
-			case config.MatchTypeCode:
-				return reply.Code
-			case config.MatchTypeEnhancedCode:
-				return reply.EnhancedCode
-			default:
-				return reply.Text
-			}
+		s := matches[4]
+		if m := reHostSaid.FindStringSubmatch(s); m != nil {
+			s = m[1]
 		}
+		reply := parseHostReply(s, matches[2])
 		if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
-			if len(cfg.Statuses) > 0 {
-				found := false
-				for _, status := range cfg.Statuses {
-					if status == matches[3] {
-						found = true
-						break
-					}
-				}
-				if !found {
-					return nil
-				}
+			if len(cfg.Statuses) > 0 && !slices.Contains(cfg.Statuses, matches[3]) {
+				return nil
 			}
-			for _, status := range cfg.NotStatuses {
-				if status == matches[3] {
-					return nil
-				}
+			if slices.Contains(cfg.NotStatuses, matches[3]) {
+				return nil
 			}
-			return cfg.Regexp.FindStringSubmatchIndex(match(cfg.Match))
+			return cfg.Regexp.FindStringSubmatchIndex(reply.value(cfg.Match))
 		}); m != nil {
-			text := string(cfg.Regexp.ExpandString(nil, cfg.Text, match(cfg.Match), m))
+			text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.value(cfg.Match), m))
 			e.statusReplies.WithLabelValues(r.Subprogram, matches[3], reply.Code, reply.EnhancedCode, text).Inc()
 		}
 	}
@@ -238,8 +222,8 @@ func (e *Exporter) process(r record, err error) {
 	} else if r.Subprogram == "smtpd" || strings.HasSuffix(r.Subprogram, "/smtpd") {
 		if strings.HasPrefix(r.Text, "NOQUEUE: reject:") {
 			if matches := reNoqueueReject.FindStringSubmatch(r.Text); matches != nil {
-				match := func(typ config.MatchType) string {
-					switch typ {
+				value := func(match config.MatchType) string {
+					switch match {
 					case config.MatchTypeCode:
 						return matches[2]
 					case config.MatchTypeEnhancedCode:
@@ -249,9 +233,9 @@ func (e *Exporter) process(r record, err error) {
 					}
 				}
 				if cfg, m := findSubmatch(e.config.NoqueueRejectReplies, func(cfg config.ReplyMatchConfig) []int {
-					return cfg.Regexp.FindStringSubmatchIndex(match(cfg.Match))
+					return cfg.Regexp.FindStringSubmatchIndex(value(cfg.Match))
 				}); m != nil {
-					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, match(cfg.Match), m))
+					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, value(cfg.Match), m))
 					e.noqueueRejectReplies.WithLabelValues(r.Subprogram, matches[1], matches[2], matches[3], text).Inc()
 				}
 			} else {
@@ -277,23 +261,13 @@ func (e *Exporter) process(r record, err error) {
 			e.statuses.WithLabelValues(r.Subprogram, matches[3]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
 			e.delays.WithLabelValues(r.Subprogram, matches[3]).Observe(f)
-			if m := reHostSaid.FindStringSubmatch(matches[4]); m != nil {
-				reply := parseHostReply(m[1], matches[2])
-				if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
-					return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
-				}); m != nil {
-					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
-					e.statusReplies.WithLabelValues(r.Subprogram, matches[3], reply.Code, reply.EnhancedCode, text).Inc()
-				}
-			} else {
-				parseStatusReply(matches)
-			}
+			parseStatusReply(matches)
 		} else if matches := reSmtpHostSaid.FindStringSubmatch(r.Text); matches != nil {
 			reply := parseHostReply(matches[1], "")
 			if cfg, m := findSubmatch(e.config.SmtpReplies, func(cfg config.ReplyMatchConfig) []int {
-				return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
+				return cfg.Regexp.FindStringSubmatchIndex(reply.value(cfg.Match))
 			}); m != nil {
-				text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
+				text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.value(cfg.Match), m))
 				e.smtpReplies.WithLabelValues(reply.Code, reply.EnhancedCode, text).Inc()
 			}
 		} else {
@@ -304,17 +278,7 @@ func (e *Exporter) process(r record, err error) {
 			e.statuses.WithLabelValues(r.Subprogram, matches[3]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
 			e.delays.WithLabelValues(r.Subprogram, matches[3]).Observe(f)
-			if m := reHostSaid.FindStringSubmatch(matches[4]); m != nil {
-				reply := parseHostReply(m[1], matches[2])
-				if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
-					return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
-				}); m != nil {
-					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
-					e.statusReplies.WithLabelValues(r.Subprogram, matches[3], reply.Code, reply.EnhancedCode, text).Inc()
-				}
-			} else {
-				parseStatusReply(matches)
-			}
+			parseStatusReply(matches)
 		} else {
 			found = false
 		}
@@ -441,9 +405,7 @@ func New(collector Collector, instance string, cfg *config.Config, logger *slog.
 	if err := e.collector.Collect(e.ch); err != nil {
 		return nil, err
 	}
-	e.wg.Add(1)
-	go func() {
-		defer e.wg.Done()
+	e.wg.Go(func() {
 		for {
 			select {
 			case res := <-e.ch:
@@ -452,7 +414,7 @@ func New(collector Collector, instance string, cfg *config.Config, logger *slog.
 				return
 			}
 		}
-	}()
+	})
 	return e, nil
 }
 
@@ -460,6 +422,17 @@ type hostReply struct {
 	Code         string
 	EnhancedCode string
 	Text         string
+}
+
+func (r hostReply) value(match config.MatchType) string {
+	switch match {
+	case config.MatchTypeCode:
+		return r.Code
+	case config.MatchTypeEnhancedCode:
+		return r.EnhancedCode
+	default:
+		return r.Text
+	}
 }
 
 func parseHostReply(s, enhancedCode string) (reply hostReply) {
