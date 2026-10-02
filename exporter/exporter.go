@@ -43,7 +43,7 @@ var (
 	rePsListed         = regexp.MustCompile(`^(DENYLISTED|BLACKLISTED|ALLOWLISTED|WHITELISTED) ` + psIPAddrPart)
 	rePsVeto           = regexp.MustCompile(`^(ALLOWLIST|WHITELIST) VETO ` + psIPAddrPart)
 
-	hostnamePart           = `[a-zA-Z0-9-._]+`
+	hostnamePart           = `[a-zA-Z0-9-:._]+`
 	hostnameWithIPAddrPart = hostnamePart + `\[` + ipAddrPart + `]`
 	reHostnameNotResolve   = regexp.MustCompile(`^hostname ` + hostnamePart + ` does not resolve to address ` + ipAddrPart)
 	reConnect              = regexp.MustCompile(`^connect from ` + hostnameWithIPAddrPart)
@@ -53,13 +53,15 @@ var (
 	reLoginFailed          = regexp.MustCompile(`^` + hostnameWithIPAddrPart + `: SASL (.+?) authentication failed:`)
 	reNoqueueReject        = regexp.MustCompile(`^NOQUEUE: reject: (\w+) from ` + hostnameWithIPAddrPart + `: (\d+) ([\d.]+) (<[^>]+>: )?([^;]+); `)
 
-	reQueueStatus = regexp.MustCompile(`delay=(-?[\d.]+).+status=([a-z-]+) \((.+?)\)$`)
+	reQueueStatus = regexp.MustCompile(`delay=(-?[\d.]+).+dsn=(\d\.\d{1,3}\.\d{1,3}), status=([a-z-]+) \((.+?)\)$`)
 	reQmgrStatus  = regexp.MustCompile(`status=([a-z-]+), .+?$`)
 
-	hostSaidPart      = `host ` + hostnameWithIPAddrPart + ` said: (.+) \(in reply to \w+[\w /-]*\)`
-	reHostSaid        = regexp.MustCompile(hostSaidPart)
-	reHostReplyStatus = regexp.MustCompile(`^(\d{3})(.{1,3}(\d\.\d\.\d)|[^ ]+|) (.+)$`)
-	reSmtpHostSaid    = regexp.MustCompile(`^\w+: ` + hostSaidPart + `$`)
+	addrPart             = `[a-zA-Z0-9-:._/]+`
+	hostnameWithAddrPart = hostnamePart + `\[` + addrPart + `]`
+	hostSaidPart         = `host ` + hostnameWithAddrPart + ` said: (.+) \(in reply to \w+[\w /-]*\)`
+	reHostSaid           = regexp.MustCompile(hostSaidPart)
+	reHostReplyStatus    = regexp.MustCompile(`^(\d{3})(.{1,3}(\d\.\d{1,3}\.\d{1,3})|[^ ]+|) (.+)$`)
+	reSmtpHostSaid       = regexp.MustCompile(`^\w+: ` + hostSaidPart + `$`)
 )
 
 // Exporter collects Postfix stats from logs and exports them
@@ -157,43 +159,39 @@ func (e *Exporter) process(r record, err error) {
 	}
 	e.logs.WithLabelValues(r.Subprogram, string(r.Severity)).Inc()
 	parseStatusReply := func(matches []string) {
-		reply, err := parseHostReply(matches[3])
-		if err == nil {
-			match := func(typ config.MatchType) string {
-				switch typ {
-				case config.MatchTypeCode:
-					return reply.Code
-				case config.MatchTypeEnhancedCode:
-					return reply.EnhancedCode
-				default:
-					return reply.Text
+		reply := parseHostReply(matches[4], matches[2])
+		match := func(typ config.MatchType) string {
+			switch typ {
+			case config.MatchTypeCode:
+				return reply.Code
+			case config.MatchTypeEnhancedCode:
+				return reply.EnhancedCode
+			default:
+				return reply.Text
+			}
+		}
+		if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
+			if len(cfg.Statuses) > 0 {
+				found := false
+				for _, status := range cfg.Statuses {
+					if status == matches[3] {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return nil
 				}
 			}
-			if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
-				if len(cfg.Statuses) > 0 {
-					found := false
-					for _, status := range cfg.Statuses {
-						if status == matches[2] {
-							found = true
-							break
-						}
-					}
-					if !found {
-						return nil
-					}
+			for _, status := range cfg.NotStatuses {
+				if status == matches[3] {
+					return nil
 				}
-				for _, status := range cfg.NotStatuses {
-					if status == matches[2] {
-						return nil
-					}
-				}
-				return cfg.Regexp.FindStringSubmatchIndex(match(cfg.Match))
-			}); m != nil {
-				text := string(cfg.Regexp.ExpandString(nil, cfg.Text, match(cfg.Match), m))
-				e.statusReplies.WithLabelValues(r.Subprogram, matches[2], reply.Code, reply.EnhancedCode, text).Inc()
 			}
-		} else {
-			e.logger.Warn("Error parsing host reply", "record", r, "err", err)
+			return cfg.Regexp.FindStringSubmatchIndex(match(cfg.Match))
+		}); m != nil {
+			text := string(cfg.Regexp.ExpandString(nil, cfg.Text, match(cfg.Match), m))
+			e.statusReplies.WithLabelValues(r.Subprogram, matches[3], reply.Code, reply.EnhancedCode, text).Inc()
 		}
 	}
 	found := true
@@ -276,45 +274,47 @@ func (e *Exporter) process(r record, err error) {
 		}
 	} else if r.Subprogram == "smtp" {
 		if matches := reQueueStatus.FindStringSubmatch(r.Text); matches != nil {
-			e.statuses.WithLabelValues(r.Subprogram, matches[2]).Inc()
+			e.statuses.WithLabelValues(r.Subprogram, matches[3]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
-			e.delays.WithLabelValues(r.Subprogram, matches[2]).Observe(f)
-			if m := reHostSaid.FindStringSubmatch(matches[3]); m != nil {
-				reply, err := parseHostReply(m[1])
-				if err == nil {
-					if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
-						return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
-					}); m != nil {
-						text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
-						e.statusReplies.WithLabelValues(r.Subprogram, matches[2], reply.Code, reply.EnhancedCode, text).Inc()
-					}
-				} else {
-					e.logger.Warn("Error parsing host reply", "record", r, "err", err)
+			e.delays.WithLabelValues(r.Subprogram, matches[3]).Observe(f)
+			if m := reHostSaid.FindStringSubmatch(matches[4]); m != nil {
+				reply := parseHostReply(m[1], matches[2])
+				if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
+					return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
+				}); m != nil {
+					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
+					e.statusReplies.WithLabelValues(r.Subprogram, matches[3], reply.Code, reply.EnhancedCode, text).Inc()
 				}
 			} else {
 				parseStatusReply(matches)
 			}
 		} else if matches := reSmtpHostSaid.FindStringSubmatch(r.Text); matches != nil {
-			reply, err := parseHostReply(matches[1])
-			if err == nil {
-				if cfg, m := findSubmatch(e.config.SmtpReplies, func(cfg config.ReplyMatchConfig) []int {
-					return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
-				}); m != nil {
-					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
-					e.smtpReplies.WithLabelValues(reply.Code, reply.EnhancedCode, text).Inc()
-				}
-			} else {
-				e.logger.Warn("Error parsing host reply", "record", r, "err", err)
+			reply := parseHostReply(matches[1], "")
+			if cfg, m := findSubmatch(e.config.SmtpReplies, func(cfg config.ReplyMatchConfig) []int {
+				return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
+			}); m != nil {
+				text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
+				e.smtpReplies.WithLabelValues(reply.Code, reply.EnhancedCode, text).Inc()
 			}
 		} else {
 			found = false
 		}
 	} else if r.Subprogram == "lmtp" {
 		if matches := reQueueStatus.FindStringSubmatch(r.Text); matches != nil {
-			e.statuses.WithLabelValues(r.Subprogram, matches[2]).Inc()
+			e.statuses.WithLabelValues(r.Subprogram, matches[3]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
-			e.delays.WithLabelValues(r.Subprogram, matches[2]).Observe(f)
-			parseStatusReply(matches)
+			e.delays.WithLabelValues(r.Subprogram, matches[3]).Observe(f)
+			if m := reHostSaid.FindStringSubmatch(matches[4]); m != nil {
+				reply := parseHostReply(m[1], matches[2])
+				if cfg, m := findSubmatch(e.config.StatusReplies, func(cfg config.StatusReplyMatchConfig) []int {
+					return cfg.Regexp.FindStringSubmatchIndex(reply.Text)
+				}); m != nil {
+					text := string(cfg.Regexp.ExpandString(nil, cfg.Text, reply.Text, m))
+					e.statusReplies.WithLabelValues(r.Subprogram, matches[3], reply.Code, reply.EnhancedCode, text).Inc()
+				}
+			} else {
+				parseStatusReply(matches)
+			}
 		} else {
 			found = false
 		}
@@ -462,19 +462,21 @@ type hostReply struct {
 	Text         string
 }
 
-func parseHostReply(s string) (*hostReply, error) {
+func parseHostReply(s, enhancedCode string) (reply hostReply) {
 	matches := reHostReplyStatus.FindStringSubmatch(s)
-	if matches == nil {
-		return nil, errors.New("failed to find host reply in " + strconv.Quote(s))
+	if matches != nil {
+		reply.Code = matches[1]
+		reply.Text = matches[len(matches)-1]
+		if len(matches) == 5 {
+			reply.EnhancedCode = matches[3]
+		}
+	} else {
+		reply.Text = s
 	}
-	reply := &hostReply{
-		Code: matches[1],
-		Text: matches[len(matches)-1],
+	if reply.EnhancedCode == "" {
+		reply.EnhancedCode = enhancedCode
 	}
-	if len(matches) == 5 {
-		reply.EnhancedCode = matches[3]
-	}
-	return reply, nil
+	return reply
 }
 
 func findSubmatch[S ~[]E, E any](slice S, f func(E) []int) (E, []int) {

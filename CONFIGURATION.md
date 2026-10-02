@@ -24,7 +24,7 @@ noqueue_reject_replies:
 
 ### `<status_reply>`
 
-The status replies are from `smtp` log entries of server replies having Postfix statuses.
+The status replies are from `smtp`/`lmtp` log entries of server (or Postfix) replies having Postfix statuses.
 
 Example log entry:
 
@@ -34,8 +34,8 @@ Jan 1 00:00:00 hostname postfix/smtp[12345]: 123456789AB: to=<user@example.com>,
 
 In this case:
 
-* `123` is a status code
-* `1.2.3` is an enhanced status code (might be empty if absent)
+* `123` is a status code (might be empty if came from Postfix itself)
+* `1.2.3` is an enhanced status code
 * `Reasons` is the text of the reply
 
 ```yml
