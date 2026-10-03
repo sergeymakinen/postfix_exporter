@@ -57,11 +57,16 @@ func TestExporter_Journald_Collect(t *testing.T) {
 					if r.Subprogram != "" {
 						id += "/" + r.Subprogram
 					}
-					var severity string
-					if r.Severity != severityInfo {
-						severity = string(r.Severity) + ": "
+					severity, priority := "", journal.PriInfo
+					switch r.Severity {
+					case severityWarning:
+						severity, priority = string(r.Severity)+": ", journal.PriWarning
+					case severityError:
+						severity, priority = string(r.Severity)+": ", journal.PriErr
+					case severityFatal, severityPanic:
+						severity, priority = string(r.Severity)+": ", journal.PriCrit
 					}
-					err = journal.Send(severity+r.Text, journal.PriInfo, map[string]string{
+					err = journal.Send(severity+r.Text, priority, map[string]string{
 						"SYSLOG_IDENTIFIER": id,
 						"SYSLOG_TIMESTAMP":  r.Time.Format(bsdFormat) + " ",
 					})

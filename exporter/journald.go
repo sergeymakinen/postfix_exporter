@@ -141,27 +141,12 @@ func (f writerFunc) Write(p []byte) (n int, err error) {
 }
 
 func formatJournald(entry *sdjournal.JournalEntry) (string, error) {
-	severity := ""
-	switch entry.Fields[sdjournal.SD_JOURNAL_FIELD_PRIORITY] {
-	case "4":
-		severity = string(severityWarning)
-	case "3":
-		severity = string(severityError)
-	case "1", "2":
-		severity = string(severityFatal)
-	case "0":
-		severity = string(severityPanic)
-	}
-	if severity != "" {
-		severity = ": " + severity
-	}
 	return fmt.Sprintf(
-		"%s %s %s[%s]%s: %s",
+		"%s %s %s[%s]: %s",
 		strings.TrimSuffix(journaldField(entry, "SYSLOG_TIMESTAMP"), " "),
 		journaldField(entry, sdjournal.SD_JOURNAL_FIELD_HOSTNAME),
 		journaldField(entry, sdjournal.SD_JOURNAL_FIELD_SYSLOG_IDENTIFIER),
 		journaldField(entry, sdjournal.SD_JOURNAL_FIELD_PID),
-		severity,
 		journaldField(entry, sdjournal.SD_JOURNAL_FIELD_MESSAGE),
 	), nil
 }
