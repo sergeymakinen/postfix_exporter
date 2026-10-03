@@ -106,7 +106,9 @@ func TestExporter_Journald_Test_Simple(t *testing.T) {
 			if err != nil {
 				t.Fatalf("New() = _, %v; want nil", err)
 			}
-			collector.Wait()
+			if err := exporter.Wait(); err != nil {
+				t.Fatalf("Wait() = %v; want nil", err)
+			}
 			if _, err := testutil.CollectAndFormat(exporter, expfmt.TypeTextPlain, testMetrics...); err != nil {
 				t.Errorf("testutil.CollectAndFormat() = _, %v; want nil", err)
 			}

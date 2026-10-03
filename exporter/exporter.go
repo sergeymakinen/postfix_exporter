@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sergeymakinen/postfix_exporter/v2/config"
@@ -70,8 +69,8 @@ var (
 type Exporter struct {
 	ch        chan result
 	done      chan struct{}
+	err       error
 	collector Collector
-	wg        sync.WaitGroup
 	instance  string
 	logger    *slog.Logger
 	config    *config.Config
@@ -98,9 +97,14 @@ type Exporter struct {
 // Close stops collecting new logs.
 func (e *Exporter) Close() error {
 	err := e.collector.Close()
-	close(e.done)
-	e.wg.Wait()
+	<-e.done
 	return err
+}
+
+// Wait blocks until the collector stops and all collected logs are processed.
+func (e *Exporter) Wait() error {
+	<-e.done
+	return e.err
 }
 
 // Describe describes all the metrics exported by the Postfix exporter. It
@@ -405,16 +409,13 @@ func New(collector Collector, instance string, cfg *config.Config, logger *slog.
 	if err := e.collector.Collect(e.ch); err != nil {
 		return nil, err
 	}
-	e.wg.Go(func() {
-		for {
-			select {
-			case res := <-e.ch:
-				e.process(res.rec, res.err)
-			case <-e.done:
-				return
-			}
+	go func() {
+		defer close(e.done)
+		for res := range e.ch {
+			e.process(res.rec, res.err)
 		}
-	})
+		e.err = e.collector.Wait()
+	}()
 	return e, nil
 }
 

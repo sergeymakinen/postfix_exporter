@@ -18,6 +18,7 @@ type File struct {
 	closed bool
 	done   chan struct{}
 	wg     sync.WaitGroup
+	err    error
 }
 
 func (f *File) Collect(ch chan<- result) error {
@@ -40,12 +41,20 @@ func (f *File) start(ch chan<- result) error {
 		return err
 	}
 	f.tail = t
-	f.wg.Add(1)
-	go func() {
-		defer f.wg.Done()
+	f.wg.Go(func() {
+		defer close(ch)
 		for {
 			select {
-			case s := <-f.tail.Lines:
+			case s, ok := <-f.tail.Lines:
+				if !ok {
+					select {
+					case <-f.done:
+					default:
+						f.err = f.tail.Err()
+					}
+					return
+				}
+
 				var res result
 				res.rec, res.err = parseRecord(s.Text)
 				select {
@@ -57,20 +66,19 @@ func (f *File) start(ch chan<- result) error {
 				return
 			}
 		}
-	}()
+	})
 	return nil
 }
 
 func (f *File) read(ch chan<- result) error {
-	ff, err := os.Open(f.Path)
+	file, err := os.Open(f.Path)
 	if err != nil {
 		return err
 	}
-	f.wg.Add(1)
-	go func() {
-		defer f.wg.Done()
-		defer ff.Close()
-		scanner := bufio.NewScanner(ff)
+	f.wg.Go(func() {
+		defer close(ch)
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			if f.closed {
 				return
@@ -83,12 +91,14 @@ func (f *File) read(ch chan<- result) error {
 				return
 			}
 		}
-	}()
+		f.err = scanner.Err()
+	})
 	return nil
 }
 
-func (f *File) Wait() {
+func (f *File) Wait() error {
 	f.wg.Wait()
+	return f.err
 }
 
 func (f *File) Close() error {

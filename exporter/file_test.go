@@ -121,7 +121,9 @@ func TestExporter_File_Test(t *testing.T) {
 			if err != nil {
 				t.Fatalf("New() = _, %v; want nil", err)
 			}
-			collector.Wait()
+			if err := exporter.Wait(); err != nil {
+				t.Fatalf("Wait() = %v; want nil", err)
+			}
 			b, err := os.ReadFile(test.Metrics)
 			if err != nil {
 				t.Fatal(err)
@@ -130,5 +132,25 @@ func TestExporter_File_Test(t *testing.T) {
 				t.Errorf("testutil.CollectAndCompare() = %v; want nil", err)
 			}
 		})
+	}
+}
+
+func TestExporter_File_Stopped(t *testing.T) {
+	exporter, err := New(&File{Path: t.TempDir()}, "postfix", nil, promslog.NewNopLogger())
+	if err != nil {
+		t.Fatalf("New() = _, %v; want nil", err)
+	}
+	defer exporter.Close()
+	errc := make(chan error, 1)
+	go func() {
+		errc <- exporter.Wait()
+	}()
+	select {
+	case err := <-errc:
+		if err == nil {
+			t.Error("Wait() = nil; want non-nil")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Wait() timeout")
 	}
 }
