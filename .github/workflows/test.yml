@@ -20,6 +20,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libsystemd-dev
       - name: Test
-        run: go test -coverprofile=coverage.txt -covermode=atomic ./...
+        run: go test -v -coverprofile=coverage.txt -covermode=atomic ./...
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
