@@ -49,7 +49,7 @@ func main() {
 		cfg *config.Config
 		err error
 	)
-	if *configFile != "" {
+	if *configFile != "" || *configCheck {
 		cfg, err = config.Load(*configFile)
 		if err != nil {
 			logger.Error("Error loading config", "err", err)
