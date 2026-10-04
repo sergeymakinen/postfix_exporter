@@ -24,6 +24,7 @@ type Journald struct {
 	closed bool
 	done   chan time.Time
 	wg     sync.WaitGroup
+	err    error
 }
 
 func (j *Journald) Collect(ch chan<- result) error {
@@ -60,10 +61,9 @@ func (j *Journald) start(ch chan<- result) error {
 	if err != nil {
 		return err
 	}
-	j.wg.Add(1)
-	go func() {
-		defer j.wg.Done()
-		j.r.Follow(j.done, writerFunc(func(p []byte) (n int, err error) {
+	j.wg.Go(func() {
+		defer close(ch)
+		err := j.r.Follow(j.done, writerFunc(func(p []byte) (n int, err error) {
 			var res result
 			res.rec, res.err = parseRecord(string(p))
 			select {
@@ -73,7 +73,12 @@ func (j *Journald) start(ch chan<- result) error {
 			}
 			return len(p), nil
 		}))
-	}()
+		select {
+		case <-j.done:
+		default:
+			j.err = err
+		}
+	})
 	return nil
 }
 
@@ -82,9 +87,8 @@ func (j *Journald) read(ch chan<- result) error {
 	if err != nil {
 		return err
 	}
-	j.wg.Add(1)
-	go func() {
-		defer j.wg.Done()
+	j.wg.Go(func() {
+		defer close(ch)
 		defer r.Close()
 		buf := make([]byte, 64<<10)
 		for {
@@ -96,6 +100,7 @@ func (j *Journald) read(ch chan<- result) error {
 				break
 			}
 			if err != nil {
+				j.err = err
 				return
 			}
 			if n > 0 {
@@ -108,17 +113,20 @@ func (j *Journald) read(ch chan<- result) error {
 				}
 			}
 		}
-	}()
+	})
 	return nil
 }
 
-func (j *Journald) Wait() {
+func (j *Journald) Wait() error {
 	j.wg.Wait()
+	return j.err
 }
 
 func (j *Journald) Close() error {
 	j.closed = true
 	close(j.done)
+	// Reader must not be closed while still in use.
+	j.wg.Wait()
 	var err error
 	if j.r != nil {
 		err = j.r.Close()
@@ -133,27 +141,12 @@ func (f writerFunc) Write(p []byte) (n int, err error) {
 }
 
 func formatJournald(entry *sdjournal.JournalEntry) (string, error) {
-	severity := ""
-	switch entry.Fields[sdjournal.SD_JOURNAL_FIELD_PRIORITY] {
-	case "4":
-		severity = string(severityWarning)
-	case "3":
-		severity = string(severityError)
-	case "1", "2":
-		severity = string(severityFatal)
-	case "0":
-		severity = string(severityPanic)
-	}
-	if severity != "" {
-		severity = ": " + severity
-	}
 	return fmt.Sprintf(
-		"%s %s %s[%s]%s: %s",
+		"%s %s %s[%s]: %s",
 		strings.TrimSuffix(journaldField(entry, "SYSLOG_TIMESTAMP"), " "),
 		journaldField(entry, sdjournal.SD_JOURNAL_FIELD_HOSTNAME),
 		journaldField(entry, sdjournal.SD_JOURNAL_FIELD_SYSLOG_IDENTIFIER),
 		journaldField(entry, sdjournal.SD_JOURNAL_FIELD_PID),
-		severity,
 		journaldField(entry, sdjournal.SD_JOURNAL_FIELD_MESSAGE),
 	), nil
 }

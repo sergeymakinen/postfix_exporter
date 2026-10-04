@@ -30,7 +30,7 @@ func TestExporter_Journald_Collect(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			exporter, err := New(&Journald{}, "postfix", cfg, promslog.NewNopLogger())
+			exporter, err := New(&Journald{}, "postfix", cfg, promslog.New(&promslog.Config{}))
 			if errors.Is(err, ErrUnsupportedCollector) {
 				t.Skip(err)
 			}
@@ -57,11 +57,16 @@ func TestExporter_Journald_Collect(t *testing.T) {
 					if r.Subprogram != "" {
 						id += "/" + r.Subprogram
 					}
-					var severity string
-					if r.Severity != severityInfo {
-						severity = string(r.Severity) + ": "
+					severity, priority := "", journal.PriInfo
+					switch r.Severity {
+					case severityWarning:
+						severity, priority = string(r.Severity)+": ", journal.PriWarning
+					case severityError:
+						severity, priority = string(r.Severity)+": ", journal.PriErr
+					case severityFatal, severityPanic:
+						severity, priority = string(r.Severity)+": ", journal.PriCrit
 					}
-					err = journal.Send(severity+r.Text, journal.PriInfo, map[string]string{
+					err = journal.Send(severity+r.Text, priority, map[string]string{
 						"SYSLOG_IDENTIFIER": id,
 						"SYSLOG_TIMESTAMP":  r.Time.Format(bsdFormat) + " ",
 					})
@@ -99,14 +104,16 @@ func TestExporter_Journald_Test_Simple(t *testing.T) {
 				Since: time.Duration(-1) * time.Hour,
 				Test:  true,
 			}
-			exporter, err := New(collector, "postfix", cfg, promslog.NewNopLogger())
+			exporter, err := New(collector, "postfix", cfg, promslog.New(&promslog.Config{}))
 			if errors.Is(err, ErrUnsupportedCollector) {
 				t.Skip(err)
 			}
 			if err != nil {
 				t.Fatalf("New() = _, %v; want nil", err)
 			}
-			collector.Wait()
+			if err := exporter.Wait(); err != nil {
+				t.Fatalf("Wait() = %v; want nil", err)
+			}
 			if _, err := testutil.CollectAndFormat(exporter, expfmt.TypeTextPlain, testMetrics...); err != nil {
 				t.Errorf("testutil.CollectAndFormat() = _, %v; want nil", err)
 			}

@@ -10,7 +10,7 @@ import (
 // Collector provides records or errors from parsing Postfix logs.
 type Collector interface {
 	Collect(ch chan<- result) error
-	Wait()
+	Wait() error
 	Close() error
 }
 

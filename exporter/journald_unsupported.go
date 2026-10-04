@@ -14,6 +14,6 @@ type Journald struct {
 
 func (*Journald) Collect(chan<- result) error { return ErrUnsupportedCollector }
 
-func (*Journald) Wait() {}
+func (*Journald) Wait() error { return nil }
 
 func (*Journald) Close() error { return nil }

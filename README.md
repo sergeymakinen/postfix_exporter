@@ -85,5 +85,5 @@ In order to test postfix_exporter regex rulesets on earlier logs, postfix_export
 Please bear in mind that when using journald as log source, you'll have to specify a minimum journald parsing range, like the last 24h.  
 Example:
 ```
-postfix_exporter --config.check --collector journald --journald.unit postfix.service --journald.since 24h --test
+postfix_exporter --config.file postfix.yml --collector journald --journald.unit postfix.service --journald.since 24h --test
 ```

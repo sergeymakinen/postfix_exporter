@@ -43,6 +43,9 @@ func (cfg *StatusReplyMatchConfig) UnmarshalYAML(value *yaml.Node) error {
 	if err := value.Decode((*plain)(cfg)); err != nil {
 		return err
 	}
+	if cfg.Regexp == nil {
+		return errors.New("missing regexp")
+	}
 	if cfg.Text == "" {
 		return errors.New("empty text replacement")
 	}
@@ -59,6 +62,9 @@ func (cfg *ReplyMatchConfig) UnmarshalYAML(value *yaml.Node) error {
 	type plain ReplyMatchConfig
 	if err := value.Decode((*plain)(cfg)); err != nil {
 		return err
+	}
+	if cfg.Regexp == nil {
+		return errors.New("missing regexp")
 	}
 	if cfg.Text == "" {
 		return errors.New("empty text replacement")

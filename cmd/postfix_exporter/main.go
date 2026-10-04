@@ -49,7 +49,7 @@ func main() {
 		cfg *config.Config
 		err error
 	)
-	if *configFile != "" {
+	if *configFile != "" || *configCheck {
 		cfg, err = config.Load(*configFile)
 		if err != nil {
 			logger.Error("Error loading config", "err", err)
@@ -86,7 +86,10 @@ func main() {
 	defer exporter.Close()
 	prometheus.MustRegister(exporter)
 	if *test {
-		collector.Wait()
+		if err := exporter.Wait(); err != nil {
+			logger.Error("Error collecting logs", "err", err)
+			os.Exit(1)
+		}
 		mfs, err := prometheus.DefaultGatherer.Gather()
 		if err != nil {
 			logger.Error("Error collecting metrics", "err", err)
@@ -104,6 +107,12 @@ func main() {
 		return
 	}
 
+	go func() {
+		if err := exporter.Wait(); err != nil {
+			logger.Error("Error collecting logs", "err", err)
+			os.Exit(1)
+		}
+	}()
 	http.Handle(*metricsPath, promhttp.Handler())
 	if *metricsPath != "/" {
 		landingConfig := web.LandingConfig{
