@@ -65,7 +65,7 @@ func parseRecord(line string) (record, error) {
 	}
 	ss, err := readUntil(" ", 1)
 	if err != nil {
-		return record{}, err
+		return record{line: line}, err
 	}
 	r := record{
 		line: line,
@@ -76,38 +76,38 @@ func parseRecord(line string) (record, error) {
 		// RFC3339 timestamp.
 		r.Time, err = time.Parse(time.RFC3339Nano, ss)
 		if err != nil {
-			return record{}, err
+			return record{line: line}, err
 		}
 	} else {
 		// Classic BSD timestamp.
 		ss2, err := readUntil(" ", 2)
 		if err != nil {
-			return record{}, err
+			return record{line: line}, err
 		}
 		ss += " " + ss2
 		r.Time, err = time.Parse(bsdFormat, ss)
 		if err != nil {
-			return record{}, err
+			return record{line: line}, err
 		}
 	}
 	r.Hostname, err = readUntil(" ", 1)
 	if err != nil {
-		return record{}, err
+		return record{line: line}, err
 	}
 	r.Program, err = readUntil("[", 1)
 	if err != nil {
-		return record{}, err
+		return record{line: line}, err
 	}
 	if parts := strings.SplitN(r.Program, "/", 2); len(parts) == 2 {
 		r.Program, r.Subprogram = parts[0], parts[1]
 	}
 	ss, err = readUntil("]: ", 1)
 	if err != nil {
-		return record{}, err
+		return record{line: line}, err
 	}
 	r.PID, err = strconv.ParseInt(ss, 10, 64)
 	if err != nil {
-		return record{}, err
+		return record{line: line}, err
 	}
 	ss, err = readUntil(": ", 1)
 	if err == nil {
