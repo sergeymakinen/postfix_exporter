@@ -182,8 +182,9 @@ func (e *Exporter) process(r record, err error) {
 			e.statusReplies.WithLabelValues(r.Subprogram, matches[3], reply.Code, reply.EnhancedCode, text).Inc()
 		}
 	}
+	daemon := r.Subprogram[strings.LastIndexByte(r.Subprogram, '/')+1:]
 	found := true
-	if r.Subprogram == "postscreen" {
+	if daemon == "postscreen" {
 		if matches := rePsConnect.FindStringSubmatch(r.Text); matches != nil {
 			e.postscreen.WithLabelValues("CONNECT").Inc()
 		} else if matches := rePsDNS.FindStringSubmatch(r.Text); matches != nil {
@@ -223,7 +224,7 @@ func (e *Exporter) process(r record, err error) {
 		} else {
 			found = false
 		}
-	} else if r.Subprogram == "smtpd" || strings.HasSuffix(r.Subprogram, "/smtpd") {
+	} else if daemon == "smtpd" {
 		if strings.HasPrefix(r.Text, "NOQUEUE: reject:") {
 			if matches := reNoqueueReject.FindStringSubmatch(r.Text); matches != nil {
 				value := func(match config.MatchType) string {
@@ -260,7 +261,7 @@ func (e *Exporter) process(r record, err error) {
 		} else {
 			found = false
 		}
-	} else if r.Subprogram == "smtp" {
+	} else if daemon == "smtp" {
 		if matches := reQueueStatus.FindStringSubmatch(r.Text); matches != nil {
 			e.statuses.WithLabelValues(r.Subprogram, matches[3]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
@@ -277,7 +278,7 @@ func (e *Exporter) process(r record, err error) {
 		} else {
 			found = false
 		}
-	} else if r.Subprogram == "lmtp" {
+	} else if daemon == "lmtp" {
 		if matches := reQueueStatus.FindStringSubmatch(r.Text); matches != nil {
 			e.statuses.WithLabelValues(r.Subprogram, matches[3]).Inc()
 			f, _ := strconv.ParseFloat(matches[1], 64)
@@ -286,13 +287,13 @@ func (e *Exporter) process(r record, err error) {
 		} else {
 			found = false
 		}
-	} else if r.Subprogram == "cleanup" {
+	} else if daemon == "cleanup" {
 		if matches := reMilter.FindStringSubmatch(r.Text); matches != nil {
 			e.milter.WithLabelValues(r.Subprogram, matches[1]).Inc()
 		} else {
 			found = false
 		}
-	} else if r.Subprogram == "qmgr" {
+	} else if daemon == "qmgr" {
 		if matches := reQmgrStatus.FindStringSubmatch(r.Text); matches != nil {
 			e.qmgrStatuses.WithLabelValues(matches[1]).Inc()
 		} else {
