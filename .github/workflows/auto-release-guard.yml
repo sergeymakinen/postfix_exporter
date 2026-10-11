@@ -1,0 +1,11 @@
+on:
+  push:
+    branches:
+      - main
+permissions:
+  actions: write
+name: Auto Release Guard
+jobs:
+  auto_release_guard:
+    name: Auto Release Guard
+    uses: sergeymakinen/ci/.github/workflows/auto-release-guard.yml@main
