@@ -2,7 +2,7 @@ module github.com/sergeymakinen/postfix_exporter/v2
 
 go 1.26.0
 
-toolchain go1.26.10
+toolchain go1.26.11
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
